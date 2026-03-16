@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ERP Dashboard</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div id="alerts" class="alert-container"></div>
+
+    <div class="app-layout hidden" id="appLayout">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-title">ERP Solutions</div>
+            </div>
+            
+            <nav class="sidebar-nav" id="sidebarNav">
+                <!-- Navigation Items Inserted by JS -->
+            </nav>
+            
+            <div class="sidebar-footer">
+                <button id="logoutBtn" class="btn btn-danger" style="width: 100%;">Cerrar Sesión</button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="topbar">
+                <h2 id="topbarTitle">Dashboard</h2>
+                <div class="user-info">
+                    <span class="text-muted">Hola,</span>
+                    <strong id="userNameDisplay">Usuario</strong>
+                    <span id="userRoleBadge" class="badge badge-primary">Admin</span>
+                </div>
+            </header>
+
+            <div class="content-area" id="contentArea">
+                <!-- Views will be dynamically injected here -->
+            </div>
+        </main>
+    </div>
+
+    <!-- View Templates (Hidden) -->
+    <template id="tpl-dashboard">
+        <div class="page" id="view-dashboard">
+            <div class="page-header">
+                <h1 class="page-title">Resumen Estadístico</h1>
+            </div>
+            <div class="stats-grid" id="dashboardStats">
+                <!-- Stats Injected via JS -->
+            </div>
+            <div class="table-container mt-3">
+                <div style="padding: 1.5rem; border-bottom: 1px solid var(--border-color);">
+                    <h3 style="font-size: 1.125rem; font-weight: 600;">Ventas Recientes</h3>
+                </div>
+                <table class="table">
+                    <thead><tr><th>ID</th><th>Monto Total</th><th>Fecha</th></tr></thead>
+                    <tbody id="recentSalesTable"></tbody>
+                </table>
+            </div>
+        </div>
+    </template>
+
+    <template id="tpl-inventory">
+        <div class="page" id="view-inventory">
+            <div class="page-header">
+                <h1 class="page-title">Gestión de Inventario</h1>
+                <div>
+                     <button class="btn btn-warning" onclick="app.showSellModal()">Registrar Venta</button>
+                    <button class="btn btn-primary" onclick="app.showAddProductModal()">+ Nuevo Producto</button>
+                </div>
+            </div>
+            <div class="table-container">
+                <table class="table">
+                    <thead><tr><th>ID</th><th>Nombre</th><th>Precio</th><th>Stock</th><th>Acciones</th></tr></thead>
+                    <tbody id="inventoryTable"></tbody>
+                </table>
+            </div>
+        </div>
+    </template>
+
+    <template id="tpl-providers">
+        <div class="page" id="view-providers">
+            <div class="page-header">
+                <h1 class="page-title">Pedidos a Proveedores</h1>
+                <!-- visible to all who can access this module -->
+                <button id="btnCreateOrder" class="btn btn-primary" onclick="app.showCreateOrderModal()">+ Nuevo Pedido al Proveedor</button>
+            </div>
+            
+             <!-- Low stock section (providers and admins can see to plan orders) -->
+            <div id="lowStockSection" class="table-container mb-3 hidden">
+                <div style="padding: 1.5rem; border-bottom: 1px solid var(--border-color);">
+                    <h3 style="font-size: 1.125rem; font-weight: 600; color: var(--warning-color);">Alerta de Stock Bajo</h3>
+                </div>
+                <table class="table">
+                    <thead><tr><th>Producto</th><th>Stock Actual</th></tr></thead>
+                    <tbody id="lowStockTable"></tbody>
+                </table>
+            </div>
+
+            <div class="table-container">
+                <table class="table">
+                    <thead><tr><th>ID</th><th>Proveedor</th><th>Estado</th><th>Fecha</th><th>Información</th></tr></thead>
+                    <tbody id="providerOrdersTable"></tbody>
+                </table>
+            </div>
+        </div>
+    </template>
+
+    <template id="tpl-equipment">
+        <div class="page" id="view-equipment">
+            <div class="page-header">
+                <h1 class="page-title">Equipamiento Prestado</h1>
+                <div>
+                     <button class="btn btn-primary" onclick="app.showAddEquipmentModal()">+ Nuevo Equipo</button>
+                     <button class="btn btn-warning" onclick="app.showLoanModal()">Registrar Préstamo</button>
+                </div>
+            </div>
+            
+            <h3 class="mt-3 mb-2" style="font-weight: 600;">Préstamos Activos</h3>
+            <div class="stats-grid mb-3" id="activeLoansGrid">
+                <!-- Active loans injected via JS -->
+            </div>
+
+            <h3 class="mb-2" style="font-weight: 600;">Equipos Disponibles</h3>
+            <div class="table-container">
+                <table class="table">
+                    <thead><tr><th>ID</th><th>Nombre</th><th>Descripción</th><th>Estado</th><th>Acciones</th></tr></thead>
+                    <tbody id="equipmentTable"></tbody>
+                </table>
+            </div>
+        </div>
+    </template>
+
+    <!-- Modals (Global Container) -->
+    <div id="modalContainer" class="modal-overlay"></div>
+
+    <script src="js/app.js"></script>
+    <script src="js/equipment.js"></script>
+    <script src="js/inventory.js"></script>
+    <script src="js/provider.js"></script>
+</body>
+</html>

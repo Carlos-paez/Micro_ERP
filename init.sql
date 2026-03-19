@@ -4,8 +4,9 @@
 CREATE TYPE user_role AS ENUM ('admin', 'provider');
 CREATE TYPE transaction_type AS ENUM ('in', 'out');
 CREATE TYPE order_status AS ENUM ('pending', 'completed', 'cancelled');
-CREATE TYPE equipment_status AS ENUM ('available', 'in_use', 'maintenance');
+CREATE TYPE equipment_status AS ENUM ('available', 'in_use', 'maintenance', 'cleaning');
 CREATE TYPE loan_status AS ENUM ('active', 'completed', 'overdue');
+CREATE TYPE session_type AS ENUM ('prepaid', 'postpaid');
 
 -- 1. Users Table
 CREATE TABLE users (
@@ -110,10 +111,9 @@ CREATE TABLE equipment (
 );
 
 INSERT INTO equipment (name, description, status) VALUES
-('PC-01', 'Computadora de escritorio zona 1', 'available'),
-('PC-02', 'Computadora de escritorio zona 1', 'available'),
-('PC-03', 'Computadora de escritorio zona 2', 'available'),
-('Proyector A', 'Proyector sala de reuniones', 'available');
+('Laptop Dell XPS', 'Portátil para uso en oficina', 'available'),
+('Proyector Epson', 'Proyector para sala de juntas', 'available'),
+('Cámara Canon', 'Cámara DSLR para eventos', 'available');
 
 -- 9. Equipment Loans
 CREATE TABLE equipment_loans (
@@ -121,7 +121,6 @@ CREATE TABLE equipment_loans (
     equipment_id INTEGER REFERENCES equipment(id),
     customer_name VARCHAR(100) NOT NULL,
     start_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    duration_minutes INTEGER NOT NULL,
-    end_time TIMESTAMP NOT NULL,
+    actual_end_time TIMESTAMP,
     status loan_status NOT NULL DEFAULT 'active'
 );

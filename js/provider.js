@@ -2,11 +2,36 @@
 const Provider = {
     orders: [],
     lowStockProducts: [],
+    allProducts: [],
+    providers: [],
 
     init: async function() {
         // removed the role check here since admin and provider can both use it
         await this.loadLowStock();
         await this.loadOrders();
+        await this.loadProviders();
+        await this.loadAllProducts();
+    },
+
+    loadProviders: async function() {
+        if(app.user.role !== 'admin') return;
+        try {
+            const res = await fetch('api/providers.php?action=list_providers');
+            const data = await res.json();
+            this.providers = data.providers || [];
+        } catch(e) {
+            console.error(e);
+        }
+    },
+
+    loadAllProducts: async function() {
+        try {
+            const res = await fetch('api/providers.php?action=list_products');
+            const data = await res.json();
+            this.allProducts = data.products || [];
+        } catch(e) {
+            console.error(e);
+        }
     },
 
     loadLowStock: async function() {
@@ -190,13 +215,14 @@ app.showCreateOrderModal = function() {
     // Both Admin and Provider can do this
     let providerHtml = '';
     if (app.user.role === 'admin') {
-        // If admin, they could specify the provider ID. For simplicity we default to 2 or let the backend assign it to admin ID and have providers see all?
-        // Wait, provider_orders requires a provider_id. Let's add an input for provider ID if admin
         providerHtml = `
             <div class="form-group" id="adminProviderSection">
-                <label class="form-label">ID del Proveedor Destino</label>
-                <input type="number" id="orderProviderId" class="form-control" min="1" placeholder="Ej: 2 para el primer proveedor">
-                <div class="text-muted mt-1" style="font-size: 0.75rem;">Si eres admin, debes especificar a qué proveedor dirigir el pedido.</div>
+                <label class="form-label">Seleccionar Proveedor</label>
+                <select id="orderProviderId" class="form-control" required>
+                    <option value="">-- Seleccionar proveedor --</option>
+                    ${Provider.providers.map(p => `<option value="${p.id}">${p.username}</option>`).join('')}
+                </select>
+                <div class="text-muted mt-1" style="font-size: 0.75rem;">Como administrador, debes seleccionar a qué proveedor dirigir el pedido.</div>
             </div>
         `;
     }
@@ -204,18 +230,30 @@ app.showCreateOrderModal = function() {
     const html = `
         <form onsubmit="event.preventDefault(); window.Provider_createOrder()">
             ${providerHtml}
-            <div class="form-group">
-                <label class="form-label">Producto a Pedir</label>
-                <select id="orderProd" class="form-control" required>
-                    <option value="">-- Seleccionar producto con bajo stock --</option>
-                    ${Provider.lowStockProducts.map(p => `<option value="${p.id}">${p.name} (Stock Actual: ${p.stock})</option>`).join('')}
-                </select>
-                <div class="text-muted mt-1" style="font-size: 0.75rem;">Para efectos demostrativos, se pide 1 tipo de producto por orden.</div>
+            
+            <div id="orderProductsContainer">
+                <div class="product-row mb-3" style="display: flex; gap: 10px; align-items: flex-end;">
+                    <div style="flex: 2;">
+                        <label class="form-label">Producto</label>
+                        <select class="form-control order-prod" required>
+                            <option value="">-- Seleccionar producto --</option>
+                            ${Provider.allProducts.map(p => `<option value="${p.id}">${p.name} (Stock: ${p.stock})</option>`).join('')}
+                        </select>
+                    </div>
+                    <div style="flex: 1;">
+                        <label class="form-label">Cantidad</label>
+                        <input type="number" class="form-control order-qty" min="1" value="10" required>
+                    </div>
+                    <div style="width: 40px;">
+                        <!-- First row cannot be removed -->
+                    </div>
+                </div>
             </div>
-            <div class="form-group">
-                <label class="form-label">Cantidad Requerida</label>
-                <input type="number" id="orderQty" class="form-control" min="1" value="10" required>
-            </div>
+            
+            <button type="button" class="btn btn-secondary btn-sm mb-3" onclick="window.Provider_addProductRow()">
+                + Agregar otro producto
+            </button>
+
             <div class="form-group">
                 <label class="form-label">Notas</label>
                 <input type="text" id="orderNotes" class="form-control" placeholder="Ej: Urgente, entrega matutina">
@@ -229,17 +267,58 @@ app.showCreateOrderModal = function() {
     app.showModal('Nuevo Pedido de Proveedor', html);
 };
 
+window.Provider_addProductRow = function() {
+    const container = document.getElementById('orderProductsContainer');
+    const div = document.createElement('div');
+    div.className = 'product-row mb-3';
+    div.style = 'display: flex; gap: 10px; align-items: flex-end;';
+    
+    div.innerHTML = `
+        <div style="flex: 2;">
+            <select class="form-control order-prod" required>
+                <option value="">-- Seleccionar producto --</option>
+                ${Provider.allProducts.map(p => `<option value="${p.id}">${p.name} (Stock: ${p.stock})</option>`).join('')}
+            </select>
+        </div>
+        <div style="flex: 1;">
+            <input type="number" class="form-control order-qty" min="1" value="10" required>
+        </div>
+        <div style="width: 40px;">
+            <button type="button" class="btn btn-danger btn-sm" onclick="window.Provider_removeProductRow(this)">×</button>
+        </div>
+    `;
+    container.appendChild(div);
+};
+
+window.Provider_removeProductRow = function(btn) {
+    btn.closest('.product-row').remove();
+};
+
 window.Provider_createOrder = async function() {
-    const prodId = parseInt(document.getElementById('orderProd').value, 10);
-    const qty = parseInt(document.getElementById('orderQty').value, 10);
+    const productSelects = document.querySelectorAll('.order-prod');
+    const quantityInputs = document.querySelectorAll('.order-qty');
     const notes = document.getElementById('orderNotes').value;
     
+    const items = [];
+    for(let i = 0; i < productSelects.length; i++) {
+        const prodId = parseInt(productSelects[i].value, 10);
+        const qty = parseInt(quantityInputs[i].value, 10);
+        if(prodId && qty > 0) {
+            items.push({ product_id: prodId, quantity: qty });
+        }
+    }
+
+    if(items.length === 0) {
+        app.showAlert('Debes seleccionar al menos un producto', 'error');
+        return;
+    }
+    
     // Admin specific handling for provider_id
-    const providerInput = document.getElementById('orderProviderId');
-    const providerId = providerInput && providerInput.value ? parseInt(providerInput.value, 10) : null;
+    const providerSelect = document.getElementById('orderProviderId');
+    const providerId = providerSelect && providerSelect.value ? parseInt(providerSelect.value, 10) : null;
 
     const payload = {
-        items: [{ product_id: prodId, quantity: qty }],
+        items: items,
         notes: notes,
         provider_id: providerId
     };

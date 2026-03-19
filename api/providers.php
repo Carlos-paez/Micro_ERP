@@ -48,6 +48,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
          // Let anyone in this module see what products need restocking
          $stmt = $pdo->query('SELECT id, name, stock FROM products WHERE stock < 10 ORDER BY stock ASC');
          sendJSON(['products' => $stmt->fetchAll()]);
+    } elseif ($action === 'list_providers') {
+         // Return all providers (users with role 'provider')
+         $stmt = $pdo->query("SELECT id, username FROM users WHERE role = 'provider' ORDER BY username ASC");
+         sendJSON(['providers' => $stmt->fetchAll()]);
+    } elseif ($action === 'list_products') {
+         // Return all products
+         $stmt = $pdo->query("SELECT id, name, stock FROM products ORDER BY name ASC");
+         sendJSON(['products' => $stmt->fetchAll()]);
     }
 } elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $input = getJSONInput();

@@ -292,6 +292,7 @@ body {
     padding: 1.5rem;
     display: flex;
     flex-direction: column;
+    transition: transform var(--transition-fast), box-shadow var(--transition-fast);
 }
 
 .stat-title {

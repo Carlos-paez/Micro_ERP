@@ -1,14 +1,10 @@
 // js/equipment.js
 const Equipment = {
-    timerInterval: null,
     activeLoans: [],
+    equipments: [],
 
     init: async function() {
-        if(this.timerInterval) clearInterval(this.timerInterval);
         await this.loadData();
-        
-        // Start checker for alerts
-        this.timerInterval = setInterval(() => this.checkExpirations(), 5000); // Check every 5s
     },
 
     loadData: async function() {
@@ -18,88 +14,74 @@ const Equipment = {
                 fetch('api/equipment.php?action=active_loans').then(r => r.json())
             ]);
 
-            this.renderEquipment(resEq.equipment || []);
+            this.equipments = resEq.equipment || [];
             this.activeLoans = resLoans.loans || [];
-            this.renderLoans();
+            this.render();
         } catch (e) {
             console.error(e);
         }
     },
 
-    renderEquipment: function(equipments) {
-        const tbody = document.getElementById('equipmentTable');
-        if(!tbody) return;
-
-        tbody.innerHTML = equipments.map(e => {
-            const statusClass = e.status === 'available' ? 'badge-success' : (e.status === 'maintenance' ? 'badge-warning' : 'badge-danger');
-            const statusText = e.status === 'available' ? 'Disponible' : (e.status === 'in_use' ? 'En Uso' : 'Mant.');
-            
-            // Generate toggle action
-            let actionHtml = '';
-            if (e.status === 'available') {
-                actionHtml = `<button class="btn btn-warning" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;" onclick="Equipment.toggleStatus(${e.id}, 'maintenance')">En Mantenimiento</button>`;
-            } else if (e.status === 'maintenance') {
-                actionHtml = `<button class="btn btn-success" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;" onclick="Equipment.toggleStatus(${e.id}, 'available')">Hacer Disponible</button>`;
-            }
-
-            return `
+    render: function() {
+        // Render Equipment List
+        const eqTable = document.getElementById('equipmentTable');
+        if(eqTable) {
+            eqTable.innerHTML = this.equipments.map(e => `
                 <tr>
-                    <td>#${e.id}</td>
-                    <td style="font-weight: 500;">${e.name}</td>
-                    <td class="text-muted text-sm">${e.description}</td>
-                    <td><span class="badge ${statusClass}">${statusText}</span></td>
-                    <td>${actionHtml}</td>
+                    <td>${e.id}</td>
+                    <td><strong>${e.name}</strong><br><small class="text-muted">${e.description || '-'}</small></td>
+                    <td><span class="badge ${this.getStatusClass(e.status)}">${this.getStatusText(e.status)}</span></td>
+                    <td>
+                        ${e.status === 'available' ? 
+                            `<button class="btn btn-warning btn-sm" onclick="Equipment.toggleStatus(${e.id}, 'maintenance')">Mantenimiento</button>` : 
+                          e.status === 'maintenance' ?
+                            `<button class="btn btn-success btn-sm" onclick="Equipment.toggleStatus(${e.id}, 'available')">Hacer Disponible</button>` :
+                            '-'
+                        }
+                    </td>
                 </tr>
-            `;
-        }).join('');
-
-        // Expose to global for modals
-        window._availableEquipments = equipments.filter(e => e.status === 'available');
-    },
-
-    renderLoans: function() {
-        const grid = document.getElementById('activeLoansGrid');
-        if(!grid) return;
-
-        if(this.activeLoans.length === 0) {
-            grid.innerHTML = '<div class="text-muted">No hay préstamos activos.</div>';
-            return;
+            `).join('');
         }
 
-        grid.innerHTML = this.activeLoans.map(l => {
-            const end = new Date(l.end_time);
-            return `
-                <div class="stat-card" style="padding: 1rem; position: relative;">
-                    <div style="font-size: 0.8rem;" class="text-muted">Préstamo #${l.id}</div>
-                    <div style="font-weight: 600; font-size: 1.1rem; margin: 0.25rem 0;">${l.equipment_name}</div>
-                    <div style="font-size: 0.85rem;" class="mb-2">Usuario: <strong>${l.customer_name}</strong></div>
-                    <div class="badge badge-warning mb-2">Finaliza: ${end.toLocaleTimeString()}</div>
-                    <div style="text-align: right; margin-top: auto;">
-                        <button class="btn btn-danger" style="font-size: 0.75rem" onclick="Equipment.returnEquipment(${l.id})">Finalizar/Devolver</button>
-                    </div>
-                </div>
-            `;
-        }).join('');
+        // Render Active Loans
+        const loanTable = document.getElementById('activeLoansTable');
+        if(loanTable) {
+            loanTable.innerHTML = this.activeLoans.map(l => `
+                <tr>
+                    <td>${l.equipment_name}</td>
+                    <td>${l.customer_name}</td>
+                    <td>${l.start_time}</td>
+                    <td>
+                        <button class="btn btn-danger btn-sm" onclick="Equipment.returnEquipment(${l.id})">Devolver</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // Expose to global for modals
+        window._availableEquipments = this.equipments.filter(e => e.status === 'available');
     },
 
-    checkExpirations: function() {
-        const now = new Date();
-        let shouldReload = false;
+    getStatusClass: function(status) {
+        switch(status) {
+            case 'available': return 'badge-success';
+            case 'in_use': return 'badge-danger';
+            case 'maintenance': return 'badge-warning';
+            default: return 'badge-secondary';
+        }
+    },
 
-        this.activeLoans.forEach(l => {
-            if(!l._alerted) {
-                const endTime = new Date(l.end_time);
-                if (now >= endTime) {
-                    l._alerted = true; // prevent re-alerting continuously until returned
-                    // Alert logic
-                    alert(`¡ALERTA DE TIEMPO!\nEl tiempo de uso para el equipo: ${l.equipment_name} (Usuario: ${l.customer_name}) ha finalizado.`);
-                }
-            }
-        });
+    getStatusText: function(status) {
+        switch(status) {
+            case 'available': return 'Disponible';
+            case 'in_use': return 'En Uso';
+            case 'maintenance': return 'Mantenimiento';
+            default: return status;
+        }
     },
 
     returnEquipment: async function(loanId) {
-        if(!confirm('¿Confirmar devolución del equipo?')) return;
+        if(!confirm('¿Confirmar devolución de equipo?')) return;
         try {
             const res = await fetch('api/equipment.php?action=return_equipment', {
                 method: 'POST',
@@ -108,7 +90,7 @@ const Equipment = {
             });
             const data = await res.json();
             if(data.success) {
-                app.showAlert('Equipo devuelto con éxito');
+                app.showAlert('Equipo devuelto correctamente');
                 this.loadData();
             } else throw new Error(data.error);
         } catch(e) {
@@ -117,8 +99,6 @@ const Equipment = {
     },
 
     toggleStatus: async function(equipmentId, newStatus) {
-        if(!confirm(`¿Seguro que deseas marcar este equipo como ${newStatus === 'maintenance' ? 'en mantenimiento' : 'disponible'}?`)) return;
-
         try {
             const res = await fetch('api/equipment.php?action=toggle_status', {
                 method: 'POST',
@@ -127,7 +107,7 @@ const Equipment = {
             });
             const data = await res.json();
             if(data.success) {
-                app.showAlert(`Estado actualizado correctamente a ${newStatus}`);
+                app.showAlert('Estado actualizado correctamente');
                 this.loadData();
             } else throw new Error(data.error);
         } catch(e) {
@@ -141,15 +121,15 @@ app.showAddEquipmentModal = function() {
         <form onsubmit="event.preventDefault(); window.Equipment_create()">
             <div class="form-group">
                 <label class="form-label">Nombre del Equipo</label>
-                <input type="text" id="eqName" class="form-control" placeholder="Ej: Monitor B" required>
+                <input type="text" id="eqName" class="form-control" placeholder="Ej: Laptop Dell" required>
             </div>
             <div class="form-group">
-                <label class="form-label">Descripción o Notas</label>
-                <input type="text" id="eqDesc" class="form-control" placeholder="Ubicación o especificaciones">
+                <label class="form-label">Descripción</label>
+                <input type="text" id="eqDesc" class="form-control" placeholder="Número de serie, modelo, etc.">
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn" onclick="app.closeModal()">Cancelar</button>
-                <button type="submit" class="btn btn-primary">Registrar Equipo</button>
+                <button type="submit" class="btn btn-primary">Guardar Equipo</button>
             </div>
         </form>
     `;
@@ -170,7 +150,7 @@ window.Equipment_create = async function() {
         });
         const data = await res.json();
         if(data.success) {
-            app.showAlert('Nuevo equipo registrado con éxito');
+            app.showAlert('Equipo registrado con éxito');
             app.closeModal();
             Equipment.loadData();
         } else throw new Error(data.error);
@@ -180,41 +160,37 @@ window.Equipment_create = async function() {
 };
 
 app.showLoanModal = function() {
-    if(!window._availableEquipments || window._availableEquipments.length === 0) {
-        app.showAlert('No hay equipos disponibles', 'warning'); return;
+    const available = window._availableEquipments || [];
+    if(available.length === 0) {
+        app.showAlert('No hay equipos disponibles para préstamo', 'warning');
+        return;
     }
 
     const html = `
-        <form onsubmit="event.preventDefault(); window.Equipment_createLoan()">
+        <form onsubmit="event.preventDefault(); window.Equipment_startLoan()">
             <div class="form-group">
-                <label class="form-label">Equipo</label>
-                <select id="loanEq" class="form-control" required>
-                    <option value="">-- Seleccionar --</option>
-                    ${window._availableEquipments.map(e => `<option value="${e.id}">${e.name}</option>`).join('')}
+                <label class="form-label">Seleccionar Equipo</label>
+                <select id="loanEqId" class="form-control" required>
+                    ${available.map(e => `<option value="${e.id}">${e.name}</option>`).join('')}
                 </select>
             </div>
             <div class="form-group">
-                <label class="form-label">Nombre del Cliente / Usuario</label>
-                <input type="text" id="loanName" class="form-control" required>
-            </div>
-            <div class="form-group">
-                <label class="form-label">Tiempo (Minutos)</label>
-                <input type="number" id="loanMins" class="form-control" value="60" min="1" required>
+                <label class="form-label">Nombre del Cliente / Empleado</label>
+                <input type="text" id="loanCustomer" class="form-control" placeholder="Quién recibe el equipo" required>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn" onclick="app.closeModal()">Cancelar</button>
-                <button type="submit" class="btn btn-primary">Iniciar y Cronometrar</button>
+                <button type="submit" class="btn btn-primary">Registrar Préstamo</button>
             </div>
         </form>
     `;
-    app.showModal('Registrar Uso de Equipo', html);
+    app.showModal('Nuevo Préstamo de Equipo', html);
 };
 
-window.Equipment_createLoan = async function() {
+window.Equipment_startLoan = async function() {
     const payload = {
-        equipment_id: parseInt(document.getElementById('loanEq').value, 10),
-        customer_name: document.getElementById('loanName').value,
-        duration_minutes: parseInt(document.getElementById('loanMins').value, 10)
+        equipment_id: document.getElementById('loanEqId').value,
+        customer_name: document.getElementById('loanCustomer').value
     };
 
     try {
@@ -225,7 +201,7 @@ window.Equipment_createLoan = async function() {
         });
         const data = await res.json();
         if(data.success) {
-            app.showAlert('Préstamo iniciado');
+            app.showAlert('Préstamo registrado con éxito');
             app.closeModal();
             Equipment.loadData();
         } else throw new Error(data.error);

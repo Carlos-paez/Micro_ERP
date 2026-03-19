@@ -1,10 +1,10 @@
 <?php
 // db.php - Database Connection Configuration
 
-$host = getenv('DB_HOST') ?: 'localhost';
-$db   = getenv('DB_NAME') ?: 'erpapp';
-$user = getenv('DB_USER') ?: 'postgres';
-$pass = getenv('DB_PASS') ?: '3006';
+$host = getenv('DB_HOST') ?: 'ep-purple-shape-ade5xlqb-pooler.c-2.us-east-1.aws.neon.tech';
+$db   = getenv('DB_NAME') ?: 'neondb';
+$user = getenv('DB_USER') ?: 'neondb_owner';
+$pass = getenv('DB_PASS') ?: 'npg_Kgr69nALtPDE';
 $port = getenv('DB_PORT') ?: '5432';
 
 $dsn = "pgsql:host=$host;port=$port;dbname=$db";

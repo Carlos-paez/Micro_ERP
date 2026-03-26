@@ -127,9 +127,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         }
 
         try {
-            $stmt = $pdo->prepare('INSERT INTO equipment (name, description, status) VALUES (?, ?, \'available\') RETURNING id');
+            $stmt = $pdo->prepare('INSERT INTO equipment (name, description, status) VALUES (?, ?, \'available\')');
             $stmt->execute([$name, $description]);
-            sendJSON(['success' => true, 'id' => $stmt->fetchColumn()]);
+            sendJSON(['success' => true, 'id' => $pdo->lastInsertId()]);
         } catch (\Exception $e) {
             sendJSON(['error' => 'Error al agregar equipo: ' . $e->getMessage()], 500);
         }

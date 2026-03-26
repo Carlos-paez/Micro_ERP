@@ -27,9 +27,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             sendJSON(['error' => 'Invalid product data'], 400);
         }
 
-        $stmt = $pdo->prepare('INSERT INTO products (name, description, price, stock) VALUES (?, ?, ?, ?) RETURNING id');
+        $stmt = $pdo->prepare('INSERT INTO products (name, description, price, stock) VALUES (?, ?, ?, ?)');
         $stmt->execute([$name, $description, $price, $stock]);
-        sendJSON(['success' => true, 'id' => $stmt->fetchColumn()]);
+        sendJSON(['success' => true, 'id' => $pdo->lastInsertId()]);
 
     } elseif ($action === 'update_stock') {
         $product_id = $input['product_id'] ?? 0;
@@ -73,9 +73,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             }
 
             // Create sale record
-            $stmt = $pdo->prepare('INSERT INTO sales (total_amount) VALUES (?) RETURNING id');
+            $stmt = $pdo->prepare('INSERT INTO sales (total_amount) VALUES (?)');
             $stmt->execute([$totalAmount]);
-            $saleId = $stmt->fetchColumn();
+            $saleId = $pdo->lastInsertId();
 
             // Record items and update stock
             $stmtInsertItem = $pdo->prepare('INSERT INTO sale_items (sale_id, product_id, quantity, price) VALUES (?, ?, ?, ?)');

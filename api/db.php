@@ -1,13 +1,13 @@
 <?php
 // db.php - Database Connection Configuration
 
-$host = getenv('DB_HOST') ?: 'ep-purple-shape-ade5xlqb-pooler.c-2.us-east-1.aws.neon.tech';
-$db   = getenv('DB_NAME') ?: 'neondb';
-$user = getenv('DB_USER') ?: 'neondb_owner';
-$pass = getenv('DB_PASS') ?: 'npg_Kgr69nALtPDE';
-$port = getenv('DB_PORT') ?: '5432';
+$host = getenv('DB_HOST') ?: 'localhost';
+$db   = getenv('DB_NAME') ?: 'micro_erp';
+$user = getenv('DB_USER') ?: 'root';
+$pass = getenv('DB_PASS') ?: '';
+$port = getenv('DB_PORT') ?: '3306';
 
-$dsn = "pgsql:host=$host;port=$port;dbname=$db";
+$dsn = "mysql:host=$host;port=$port;dbname=$db;charset=utf8mb4";
 $options = [
     PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION, // Throw exceptions on errors
     PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,       // Fetch associative arrays

@@ -72,9 +72,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
         $pdo->beginTransaction();
         try {
-            $stmt = $pdo->prepare('INSERT INTO provider_orders (provider_id, status, notes) VALUES (?, ?, ?) RETURNING id');
+            $stmt = $pdo->prepare('INSERT INTO provider_orders (provider_id, status, notes) VALUES (?, ?, ?)');
             $stmt->execute([$providerId, 'pending', $notes]);
-            $orderId = $stmt->fetchColumn();
+            $orderId = $pdo->lastInsertId();
 
             $stmtItem = $pdo->prepare('INSERT INTO provider_order_items (order_id, product_id, quantity) VALUES (?, ?, ?)');
             foreach ($items as $item) {
@@ -109,7 +109,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 sendJSON(['error' => 'Order must be fulfilled by provider before receiving'], 400);
             }
 
-            $stmt = $pdo->prepare('UPDATE provider_orders SET status = ? WHERE id = ? RETURNING status');
+            $stmt = $pdo->prepare('UPDATE provider_orders SET status = ? WHERE id = ?');
             $stmt->execute([$status, $orderId]);
 
             if ($status === 'completed') {

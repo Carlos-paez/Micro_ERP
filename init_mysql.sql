@@ -9,6 +9,8 @@ CREATE TABLE users (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Note: In production you should properly hash passwords!
+-- We'll insert an admin and a provider for testing
 INSERT INTO users (username, password_hash, role) VALUES 
 ('admin', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin'),
 ('proveedor1', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'provider');
@@ -24,6 +26,7 @@ CREATE TABLE products (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
+-- Dummy products
 INSERT INTO products (name, description, price, stock) VALUES
 ('Laptop Dell XPS', 'Portátil de alto rendimiento', 1500.00, 10),
 ('Mouse Inalámbrico', 'Mouse ergonómico Logitech', 25.50, 50),

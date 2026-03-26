@@ -230,12 +230,11 @@ switch($action) {
             }
             
             $stmt = $pdo->prepare("INSERT INTO sales 
-                (invoice_number, customer_name, customer_document, subtotal, total_amount, payment_method, user_id) 
-                VALUES (?, ?, ?, ?, ?, ?, ?)");
+                (invoice_number, customer_name, subtotal, total_amount, payment_method, user_id) 
+                VALUES (?, ?, ?, ?, ?, ?)");
             $stmt->execute([
                 $invoice,
                 $data['customer_name'] ?? 'Cliente Mostrador',
-                $data['customer_document'] ?? null,
                 $subtotal,
                 $subtotal,
                 $data['payment_method'] ?? 'cash',
@@ -356,23 +355,6 @@ switch($action) {
         }
         break;
 
-    case 'barcode_lookup':
-        if (!isAuthenticated()) sendJSON(['error' => 'Unauthorized'], 403);
-        $barcode = $_GET['barcode'] ?? '';
-        if (empty($barcode)) sendJSON(['error' => 'Código de barras requerido'], 400);
-        
-        try {
-            $stmt = $pdo->prepare("SELECT * FROM products WHERE barcode = ? AND is_active = 1");
-            $stmt->execute([$barcode]);
-            $product = $stmt->fetch();
-            if (!$product) sendJSON(['error' => 'Producto no encontrado'], 404);
-            sendJSON(['product' => $product]);
-        } catch (PDOException $e) {
-            sendJSON(['error' => $e->getMessage()], 500);
-        }
-        break;
-
     default:
         sendJSON(['error' => 'Acción no válida'], 400);
 }
-?>

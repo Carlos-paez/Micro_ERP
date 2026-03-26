@@ -1,433 +1,297 @@
 <?php
-// api/providers.php - Enhanced Supplier Management
+// api/providers.php
 session_start();
 require_once 'db.php';
 
-function isAdmin() {
-    return isset($_SESSION['user_id']) && $_SESSION['role'] === 'admin';
+if (!isset($_SESSION['user_id'])) {
+    sendJSON(['error' => 'Unauthorized'], 401);
 }
 
-function isProvider() {
-    return isset($_SESSION['user_id']) && $_SESSION['role'] === 'provider';
-}
-
-function isAuthenticated() {
-    return isset($_SESSION['user_id']);
-}
-
-function getJSONInput() {
-    return json_decode(file_get_contents('php://input'), true) ?? [];
-}
-
-function sendJSON($data, $code = 200) {
-    http_response_code($code);
-    header('Content-Type: application/json');
-    echo json_encode($data);
-    exit;
-}
-
+$userId = $_SESSION['user_id'];
+$role = $_SESSION['role'];
 $action = $_GET['action'] ?? '';
-$user_id = $_SESSION['user_id'] ?? null;
-$role = $_SESSION['role'] ?? null;
 
-switch($action) {
-    case 'list_suppliers':
-        if (!isAdmin()) sendJSON(['error' => 'Unauthorized'], 403);
-        try {
-            $stmt = $pdo->query("SELECT s.*, c.name as category_name,
-                (SELECT COUNT(*) FROM provider_orders WHERE supplier_id = s.id) as total_orders,
-                (SELECT COALESCE(SUM(total_amount), 0) FROM provider_orders WHERE supplier_id = s.id AND status = 'completed') as total_purchases
-                FROM suppliers s
-                LEFT JOIN categories c ON s.category_id = c.id
-                WHERE s.is_active = 1
-                ORDER BY s.name");
-            $suppliers = $stmt->fetchAll();
-            sendJSON(['suppliers' => $suppliers]);
-        } catch (PDOException $e) {
-            sendJSON(['error' => $e->getMessage()], 500);
-        }
-        break;
-
-    case 'get_supplier':
-        if (!isAuthenticated()) sendJSON(['error' => 'Unauthorized'], 403);
-        $id = intval($_GET['id'] ?? 0);
-        try {
-            $stmt = $pdo->prepare("SELECT s.*, c.name as category_name FROM suppliers s LEFT JOIN categories c ON s.category_id = c.id WHERE s.id = ?");
-            $stmt->execute([$id]);
-            $supplier = $stmt->fetch();
-            if (!$supplier) sendJSON(['error' => 'Proveedor no encontrado'], 404);
-            
-            $stmt = $pdo->prepare("SELECT sp.*, p.name as product_name, p.sku FROM supplier_products sp JOIN products p ON sp.product_id = p.id WHERE sp.supplier_id = ?");
-            $stmt->execute([$id]);
-            $supplier['products'] = $stmt->fetchAll();
-            
-            sendJSON(['supplier' => $supplier]);
-        } catch (PDOException $e) {
-            sendJSON(['error' => $e->getMessage()], 500);
-        }
-        break;
-
-    case 'create_supplier':
-        if (!isAdmin()) sendJSON(['error' => 'Unauthorized'], 403);
-        $data = getJSONInput();
-        if (empty($data['name'])) sendJSON(['error' => 'Nombre requerido'], 400);
+if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+    if ($action === 'list_suppliers') {
+        $stmt = $pdo->query('SELECT * FROM suppliers WHERE is_active = 1 ORDER BY name ASC');
+        sendJSON(['suppliers' => $stmt->fetchAll()]);
+    
+    } elseif ($action === 'list_orders') {
+        $query = 'SELECT po.*, s.name as supplier_name, s.phone as supplier_phone,
+                  u_created.username as created_by_name,
+                  u_confirmed.username as confirmed_by_name,
+                  u_received.username as received_by_name
+                  FROM provider_orders po
+                  JOIN suppliers s ON po.supplier_id = s.id
+                  LEFT JOIN users u_created ON po.created_by = u_created.id
+                  LEFT JOIN users u_confirmed ON po.confirmed_by = u_confirmed.id
+                  LEFT JOIN users u_received ON po.received_by = u_received.id';
+        $params = [];
         
-        try {
-            $stmt = $pdo->prepare("INSERT INTO suppliers 
-                (name, company_name, rfc_tax_id, contact_name, email, phone, mobile, address, city, state, country, postal_code, category_id, payment_terms, notes) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->execute([
-                $data['name'],
-                $data['company_name'] ?? null,
-                $data['rfc_tax_id'] ?? null,
-                $data['contact_name'] ?? null,
-                $data['email'] ?? null,
-                $data['phone'] ?? null,
-                $data['mobile'] ?? null,
-                $data['address'] ?? null,
-                $data['city'] ?? null,
-                $data['state'] ?? null,
-                $data['country'] ?? 'México',
-                $data['postal_code'] ?? null,
-                $data['category_id'] ?? null,
-                $data['payment_terms'] ?? 'contado',
-                $data['notes'] ?? null
-            ]);
-            $id = $pdo->lastInsertId();
-            sendJSON(['success' => true, 'id' => $id, 'message' => 'Proveedor creado']);
-        } catch (PDOException $e) {
-            sendJSON(['error' => $e->getMessage()], 500);
+        $statusFilter = $_GET['status'] ?? '';
+        if ($statusFilter) {
+            $query .= ' WHERE po.status = ?';
+            $params[] = $statusFilter;
         }
-        break;
-
-    case 'update_supplier':
-        if (!isAdmin()) sendJSON(['error' => 'Unauthorized'], 403);
-        $data = getJSONInput();
-        $id = intval($data['id'] ?? 0);
-        if (!$id) sendJSON(['error' => 'ID requerido'], 400);
         
-        try {
-            $stmt = $pdo->prepare("UPDATE suppliers SET 
-                name = ?, company_name = ?, rfc_tax_id = ?, contact_name = ?, email = ?, phone = ?, mobile = ?, 
-                address = ?, city = ?, state = ?, country = ?, postal_code = ?, category_id = ?, payment_terms = ?, notes = ?
-                WHERE id = ?");
-            $stmt->execute([
-                $data['name'],
-                $data['company_name'] ?? null,
-                $data['rfc_tax_id'] ?? null,
-                $data['contact_name'] ?? null,
-                $data['email'] ?? null,
-                $data['phone'] ?? null,
-                $data['mobile'] ?? null,
-                $data['address'] ?? null,
-                $data['city'] ?? null,
-                $data['state'] ?? null,
-                $data['country'] ?? 'México',
-                $data['postal_code'] ?? null,
-                $data['category_id'] ?? null,
-                $data['payment_terms'] ?? 'contado',
-                $data['notes'] ?? null,
-                $id
-            ]);
-            sendJSON(['success' => true, 'message' => 'Proveedor actualizado']);
-        } catch (PDOException $e) {
-            sendJSON(['error' => $e->getMessage()], 500);
-        }
-        break;
-
-    case 'delete_supplier':
-        if (!isAdmin()) sendJSON(['error' => 'Unauthorized'], 403);
-        $data = getJSONInput();
-        $id = intval($data['id'] ?? 0);
-        if (!$id) sendJSON(['error' => 'ID requerido'], 400);
+        $query .= ' ORDER BY po.created_at DESC';
         
-        try {
-            $stmt = $pdo->prepare("UPDATE suppliers SET is_active = 0 WHERE id = ?");
-            $stmt->execute([$id]);
-            sendJSON(['success' => true, 'message' => 'Proveedor eliminado']);
-        } catch (PDOException $e) {
-            sendJSON(['error' => $e->getMessage()], 500);
-        }
-        break;
+        $stmt = $pdo->prepare($query);
+        $stmt->execute($params);
+        $orders = $stmt->fetchAll();
 
-    case 'list_orders':
-        try {
-            $status = $_GET['status'] ?? '';
-            $supplier_id = intval($_GET['supplier_id'] ?? 0);
-            
-            $sql = "SELECT po.*, s.name as supplier_name, s.contact_name, s.phone as supplier_phone,
-                    u.username as created_by_name
-                    FROM provider_orders po
-                    JOIN suppliers s ON po.supplier_id = s.id
-                    LEFT JOIN users u ON po.created_by = u.id
-                    WHERE 1=1";
-            $params = [];
-            
-            if ($status) {
-                $sql .= " AND po.status = ?";
-                $params[] = $status;
-            }
-            if ($supplier_id > 0) {
-                $sql .= " AND po.supplier_id = ?";
-                $params[] = $supplier_id;
-            }
-            
-            $sql .= " ORDER BY po.created_at DESC LIMIT 100";
-            
-            $stmt = $pdo->prepare($sql);
-            $stmt->execute($params);
-            $orders = $stmt->fetchAll();
-            
-            $stmtItems = $pdo->prepare("SELECT poi.*, p.name as product_name, p.sku 
-                FROM provider_order_items poi 
-                JOIN products p ON poi.product_id = p.id 
-                WHERE poi.order_id = ?");
-            
-            foreach ($orders as &$order) {
-                $stmtItems->execute([$order['id']]);
-                $order['items'] = $stmtItems->fetchAll();
-            }
-            
-            sendJSON(['orders' => $orders]);
-        } catch (PDOException $e) {
-            sendJSON(['error' => $e->getMessage()], 500);
+        foreach ($orders as &$order) {
+            $stmtItems = $pdo->prepare('
+                SELECT poi.*, p.name as product_name, p.sku
+                FROM provider_order_items poi
+                JOIN products p ON poi.product_id = p.id
+                WHERE poi.order_id = ?
+            ');
+            $stmtItems->execute([$order['id']]);
+            $order['items'] = $stmtItems->fetchAll();
         }
-        break;
 
-    case 'get_order':
-        if (!isAuthenticated()) sendJSON(['error' => 'Unauthorized'], 403);
-        $id = intval($_GET['id'] ?? 0);
-        try {
-            $stmt = $pdo->prepare("SELECT po.*, s.name as supplier_name, s.contact_name, s.phone, s.email as supplier_email
-                FROM provider_orders po
-                JOIN suppliers s ON po.supplier_id = s.id
-                WHERE po.id = ?");
-            $stmt->execute([$id]);
-            $order = $stmt->fetch();
-            if (!$order) sendJSON(['error' => 'Pedido no encontrado'], 404);
-            
-            $stmt = $pdo->prepare("SELECT poi.*, p.name as product_name, p.sku, p.stock as current_stock
-                FROM provider_order_items poi 
-                JOIN products p ON poi.product_id = p.id 
-                WHERE poi.order_id = ?");
-            $stmt->execute([$id]);
-            $order['items'] = $stmt->fetchAll();
-            
-            sendJSON(['order' => $order]);
-        } catch (PDOException $e) {
-            sendJSON(['error' => $e->getMessage()], 500);
-        }
-        break;
-
-    case 'create_order':
-        if (!isAuthenticated()) sendJSON(['error' => 'Unauthorized'], 403);
-        $data = getJSONInput();
-        $items = $data['items'] ?? [];
+        sendJSON(['orders' => $orders]);
+    
+    } elseif ($action === 'get_order') {
+        $orderId = $_GET['id'] ?? 0;
+        $stmt = $pdo->prepare('SELECT po.*, s.name as supplier_name FROM provider_orders po JOIN suppliers s ON po.supplier_id = s.id WHERE po.id = ?');
+        $stmt->execute([$orderId]);
+        $order = $stmt->fetch();
         
-        if (empty($items)) sendJSON(['error' => 'No hay productos en el pedido'], 400);
-        if (empty($data['supplier_id'])) sendJSON(['error' => 'Proveedor requerido'], 400);
+        if (!$order) {
+            sendJSON(['error' => 'Order not found'], 404);
+        }
         
+        $stmtItems = $pdo->prepare('
+            SELECT poi.*, p.name as product_name, p.sku
+            FROM provider_order_items poi
+            JOIN products p ON poi.product_id = p.id
+            WHERE poi.order_id = ?
+        ');
+        $stmtItems->execute([$orderId]);
+        $order['items'] = $stmtItems->fetchAll();
+        
+        sendJSON(['order' => $order]);
+    
+    } elseif ($action === 'low_stock') {
+        $stmt = $pdo->query('SELECT id, name, sku, stock, min_stock FROM products WHERE stock < min_stock AND is_active = 1 ORDER BY stock ASC');
+        sendJSON(['products' => $stmt->fetchAll()]);
+    
+    } elseif ($action === 'list_products') {
+        $stmt = $pdo->query('SELECT id, name, sku, stock, price FROM products WHERE is_active = 1 ORDER BY name ASC');
+        sendJSON(['products' => $stmt->fetchAll()]);
+    
+    } elseif ($action === 'supplier_products') {
+        $supplierId = $_GET['supplier_id'] ?? 0;
+        $stmt = $pdo->prepare('
+            SELECT sp.*, p.name as product_name, p.sku, p.stock
+            FROM supplier_products sp
+            JOIN products p ON sp.product_id = p.id
+            WHERE sp.supplier_id = ?
+            ORDER BY p.name ASC
+        ');
+        $stmt->execute([$supplierId]);
+        sendJSON(['supplier_products' => $stmt->fetchAll()]);
+    }
+
+} elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $input = getJSONInput();
+
+    if ($action === 'create_order') {
+        $supplierId = $input['supplier_id'] ?? 0;
+        $items = $input['items'] ?? [];
+        $notes = $input['notes'] ?? '';
+        $expectedDate = $input['expected_date'] ?? null;
+
+        if (!$supplierId) {
+            sendJSON(['error' => 'Supplier is required'], 400);
+        }
+        if (empty($items)) {
+            sendJSON(['error' => 'No items provided'], 400);
+        }
+
+        $pdo->beginTransaction();
         try {
-            $pdo->beginTransaction();
+            $orderNumber = 'PO-' . date('Ymd') . '-' . str_pad(mt_rand(1, 9999), 4, '0', STR_PAD_LEFT);
             
-            $order_number = 'PO-' . date('Ymd') . '-' . str_pad(mt_rand(1, 9999), 4, '0', STR_PAD_LEFT);
-            
-            $stmt = $pdo->prepare("INSERT INTO provider_orders 
-                (order_number, supplier_id, status, order_date, expected_date, notes, created_by) 
-                VALUES (?, ?, 'pending', CURDATE(), ?, ?, ?)");
-            $stmt->execute([
-                $order_number,
-                $data['supplier_id'],
-                $data['expected_date'] ?? null,
-                $data['notes'] ?? null,
-                $user_id
-            ]);
-            $order_id = $pdo->lastInsertId();
+            $stmt = $pdo->prepare('INSERT INTO provider_orders (order_number, supplier_id, status, order_date, expected_date, notes, created_by) VALUES (?, ?, ?, CURDATE(), ?, ?, ?)');
+            $stmt->execute([$orderNumber, $supplierId, 'draft', $expectedDate, $notes, $userId]);
+            $orderId = $pdo->lastInsertId();
+
+            $stmtItem = $pdo->prepare('INSERT INTO provider_order_items (order_id, product_id, quantity_ordered, unit_price, subtotal) VALUES (?, ?, ?, ?, ?)');
             
             $total = 0;
-            $stmtItem = $pdo->prepare("INSERT INTO provider_order_items 
-                (order_id, product_id, quantity_ordered, unit_price, subtotal) 
-                VALUES (?, ?, ?, ?, ?)");
-            
             foreach ($items as $item) {
-                $product_id = intval($item['product_id']);
-                $qty = intval($item['quantity']);
-                $price = floatval($item['price'] ?? 0);
-                $subtotal = $qty * $price;
+                $productId = $item['product_id'];
+                $qty = $item['quantity'];
+                
+                $stmtProd = $pdo->prepare('SELECT cost_price FROM products WHERE id = ?');
+                $stmtProd->execute([$productId]);
+                $product = $stmtProd->fetch();
+                
+                if (!$product) continue;
+                
+                $unitPrice = $product['cost_price'];
+                $subtotal = $qty * $unitPrice;
                 $total += $subtotal;
                 
-                $stmtItem->execute([$order_id, $product_id, $qty, $price, $subtotal]);
+                $stmtItem->execute([$orderId, $productId, $qty, $unitPrice, $subtotal]);
             }
-            
-            $stmt = $pdo->prepare("UPDATE provider_orders SET total_amount = ? WHERE id = ?");
-            $stmt->execute([$total, $order_id]);
+
+            $stmtUpdateTotal = $pdo->prepare('UPDATE provider_orders SET total_amount = ?, subtotal = ? WHERE id = ?');
+            $stmtUpdateTotal->execute([$total, $total, $orderId]);
             
             $pdo->commit();
-            sendJSON(['success' => true, 'order_id' => $order_id, 'order_number' => $order_number, 'message' => 'Pedido creado']);
-        } catch (PDOException $e) {
+            sendJSON(['success' => true, 'order_id' => $orderId, 'order_number' => $orderNumber]);
+        } catch (\Exception $e) {
             $pdo->rollBack();
-            sendJSON(['error' => $e->getMessage()], 500);
+            sendJSON(['error' => 'Failed creating order: ' . $e->getMessage()], 500);
         }
-        break;
 
-    case 'update_order_status':
-        if (!isAdmin()) sendJSON(['error' => 'Unauthorized'], 403);
-        $data = getJSONInput();
-        $order_id = intval($data['order_id'] ?? 0);
-        $status = $data['status'] ?? '';
-        
-        if (!$order_id || !$status) sendJSON(['error' => 'Datos requeridos'], 400);
-        
+    } elseif ($action === 'update_order_status') {
+        $orderId = $input['order_id'] ?? 0;
+        $status = $input['status'] ?? '';
+
+        $validTransitions = [
+            'draft' => ['pending', 'cancelled'],
+            'pending' => ['confirmed', 'cancelled'],
+            'confirmed' => ['in_transit', 'cancelled'],
+            'in_transit' => ['received', 'partial'],
+            'received' => ['partial', 'completed'],
+        ];
+
+        $stmtGet = $pdo->prepare('SELECT status, supplier_id FROM provider_orders WHERE id = ?');
+        $stmtGet->execute([$orderId]);
+        $order = $stmtGet->fetch();
+
+        if (!$order) {
+            sendJSON(['error' => 'Order not found'], 404);
+        }
+
+        $allowedStatuses = $validTransitions[$order['status']] ?? [];
+        if (!in_array($status, $allowedStatuses)) {
+            sendJSON(['error' => 'Invalid status transition'], 400);
+        }
+
+        $pdo->beginTransaction();
         try {
-            $pdo->beginTransaction();
-            
-            $stmt = $pdo->prepare("SELECT status FROM provider_orders WHERE id = ? FOR UPDATE");
-            $stmt->execute([$order_id]);
-            $order = $stmt->fetch();
-            if (!$order) {
-                $pdo->rollBack();
-                sendJSON(['error' => 'Pedido no encontrado'], 404);
+            $updateFields = ['status = ?'];
+            $updateParams = [$status];
+
+            if ($status === 'pending') {
+                $updateFields[] = 'confirmed_by = ?';
+                $updateParams[] = $userId;
+            } elseif ($status === 'received') {
+                $updateFields[] = 'received_by = ?';
+                $updateFields[] = 'received_date = CURDATE()';
+                $updateParams[] = $userId;
+            } elseif ($status === 'completed') {
+                $updateFields[] = 'payment_status = ?';
+                $updateParams[] = 'paid';
             }
-            
-            $valid_transitions = [
-                'pending' => ['sent', 'cancelled'],
-                'sent' => ['confirmed', 'cancelled'],
-                'confirmed' => ['in_transit', 'cancelled'],
-                'in_transit' => ['received', 'partial', 'cancelled'],
-                'partial' => ['completed', 'cancelled'],
-            ];
-            
-            if (!isset($valid_transitions[$order['status']]) || !in_array($status, $valid_transitions[$order['status']])) {
-                $pdo->rollBack();
-                sendJSON(['error' => 'Transición de estado no válida'], 400);
-            }
-            
-            $stmt = $pdo->prepare("UPDATE provider_orders SET status = ?, updated_at = NOW() WHERE id = ?");
-            $stmt->execute([$status, $order_id]);
-            
-            if ($status === 'received' || $status === 'completed') {
-                $stmtItems = $pdo->prepare("SELECT * FROM provider_order_items WHERE order_id = ?");
-                $stmtItems->execute([$order_id]);
+
+            $updateParams[] = $orderId;
+            $stmt = $pdo->prepare('UPDATE provider_orders SET ' . implode(', ', $updateFields) . ' WHERE id = ?');
+            $stmt->execute($updateParams);
+
+            if (in_array($status, ['received', 'partial', 'completed'])) {
+                $stmtItems = $pdo->prepare('SELECT product_id, quantity_received, quantity_ordered FROM provider_order_items WHERE order_id = ?');
+                $stmtItems->execute([$orderId]);
                 $items = $stmtItems->fetchAll();
-                
+
+                $stmtUpdateStock = $pdo->prepare('UPDATE products SET stock = stock + ? WHERE id = ?');
+                $stmtInsertTrans = $pdo->prepare('INSERT INTO inventory_transactions (product_id, type, quantity, stock_before, stock_after, reference_type, reference_id, notes, user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
+
                 foreach ($items as $item) {
-                    $stmt = $pdo->prepare("UPDATE products SET stock = stock + ? WHERE id = ?");
-                    $stmt->execute([$item['quantity_ordered'], $item['product_id']]);
-                    
-                    $stmt = $pdo->prepare("INSERT INTO inventory_transactions 
-                        (product_id, type, quantity, stock_before, stock_after, notes, user_id) 
-                        SELECT ?, 'in', ?, stock, stock + ?, ?, ?
-                        FROM products WHERE id = ?");
-                    $stmt->execute([
-                        $item['product_id'], 
-                        $item['quantity_ordered'],
-                        $item['quantity_ordered'],
-                        "Recepción pedido #$order_id",
-                        $user_id,
-                        $item['product_id']
-                    ]);
-                    
-                    $stmt = $pdo->prepare("UPDATE provider_order_items SET status = 'fulfilled', quantity_received = quantity_ordered WHERE id = ?");
-                    $stmt->execute([$item['id']]);
+                    $qtyToAdd = $status === 'partial' ? $item['quantity_received'] : $item['quantity_ordered'];
+                    if ($qtyToAdd > 0) {
+                        $stmtGetStock = $pdo->prepare('SELECT stock FROM products WHERE id = ?');
+                        $stmtGetStock->execute([$item['product_id']]);
+                        $stockBefore = $stmtGetStock->fetchColumn();
+
+                        $stmtUpdateStock->execute([$qtyToAdd, $item['product_id']]);
+                        $stockAfter = $stockBefore + $qtyToAdd;
+
+                        $stmtInsertTrans->execute([
+                            $item['product_id'], 'in', $qtyToAdd, $stockBefore, $stockAfter,
+                            'provider_order', $orderId, "Recibido orden #$orderId", $userId
+                        ]);
+                    }
                 }
-                
-                $stmt = $pdo->prepare("UPDATE provider_orders SET received_date = CURDATE() WHERE id = ?");
-                $stmt->execute([$order_id]);
             }
-            
+
             $pdo->commit();
-            sendJSON(['success' => true, 'message' => "Pedido actualizado a: $status"]);
-        } catch (PDOException $e) {
+            sendJSON(['success' => true]);
+        } catch (\Exception $e) {
             $pdo->rollBack();
-            sendJSON(['error' => $e->getMessage()], 500);
+            sendJSON(['error' => 'Update failed: ' . $e->getMessage()], 500);
         }
-        break;
 
-    case 'supplier_products':
-        if (!isAdmin()) sendJSON(['error' => 'Unauthorized'], 403);
-        $supplier_id = intval($_GET['supplier_id'] ?? 0);
-        
+    } elseif ($action === 'update_order_item') {
+        $orderId = $input['order_id'] ?? 0;
+        $itemId = $input['item_id'] ?? 0;
+        $quantityReceived = $input['quantity_received'] ?? 0;
+
+        $stmt = $pdo->prepare('UPDATE provider_order_items SET quantity_received = ?, status = ? WHERE id = ? AND order_id = ?');
+        $status = $quantityReceived >= $input['quantity_ordered'] ? 'fulfilled' : 'partial';
+        $stmt->execute([$quantityReceived, $status, $itemId, $orderId]);
+
+        sendJSON(['success' => true]);
+
+    } elseif ($action === 'save_supplier') {
+        $id = $input['id'] ?? null;
+        $data = [
+            'name' => $input['name'] ?? '',
+            'company_name' => $input['company_name'] ?? '',
+            'rfc_tax_id' => $input['rfc_tax_id'] ?? '',
+            'contact_name' => $input['contact_name'] ?? '',
+            'email' => $input['email'] ?? '',
+            'phone' => $input['phone'] ?? '',
+            'mobile' => $input['mobile'] ?? '',
+            'address' => $input['address'] ?? '',
+            'city' => $input['city'] ?? '',
+            'state' => $input['state'] ?? '',
+            'country' => $input['country'] ?? 'México',
+            'postal_code' => $input['postal_code'] ?? '',
+            'payment_terms' => $input['payment_terms'] ?? 'contado',
+            'notes' => $input['notes'] ?? ''
+        ];
+
+        if (empty($data['name'])) {
+            sendJSON(['error' => 'Supplier name is required'], 400);
+        }
+
         try {
-            $stmt = $pdo->prepare("SELECT sp.*, p.name as product_name, p.sku, p.stock 
-                FROM supplier_products sp 
-                JOIN products p ON sp.product_id = p.id 
-                WHERE sp.supplier_id = ?
-                ORDER BY p.name");
-            $stmt->execute([$supplier_id]);
-            $products = $stmt->fetchAll();
-            sendJSON(['products' => $products]);
-        } catch (PDOException $e) {
-            sendJSON(['error' => $e->getMessage()], 500);
+            if ($id) {
+                $fields = [];
+                $params = [];
+                foreach ($data as $key => $value) {
+                    $fields[] = "$key = ?";
+                    $params[] = $value;
+                }
+                $params[] = $id;
+                $stmt = $pdo->prepare('UPDATE suppliers SET ' . implode(', ', $fields) . ' WHERE id = ?');
+                $stmt->execute($params);
+                sendJSON(['success' => true, 'id' => $id]);
+            } else {
+                $columns = array_keys($data);
+                $placeholders = array_fill(0, count($data), '?');
+                $stmt = $pdo->prepare('INSERT INTO suppliers (' . implode(', ', $columns) . ') VALUES (' . implode(', ', $placeholders) . ')');
+                $stmt->execute(array_values($data));
+                sendJSON(['success' => true, 'id' => $pdo->lastInsertId()]);
+            }
+        } catch (\Exception $e) {
+            sendJSON(['error' => 'Failed to save supplier'], 500);
         }
-        break;
 
-    case 'add_supplier_product':
-        if (!isAdmin()) sendJSON(['error' => 'Unauthorized'], 403);
-        $data = getJSONInput();
-        
-        try {
-            $stmt = $pdo->prepare("INSERT INTO supplier_products 
-                (supplier_id, product_id, supplier_sku, supplier_price, min_order_quantity, lead_time_days, is_preferred) 
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-                ON DUPLICATE KEY UPDATE 
-                supplier_sku = VALUES(supplier_sku), 
-                supplier_price = VALUES(supplier_price),
-                min_order_quantity = VALUES(min_order_quantity),
-                lead_time_days = VALUES(lead_time_days),
-                is_preferred = VALUES(is_preferred)");
-            $stmt->execute([
-                $data['supplier_id'],
-                $data['product_id'],
-                $data['supplier_sku'] ?? null,
-                $data['supplier_price'] ?? 0,
-                $data['min_order_quantity'] ?? 1,
-                $data['lead_time_days'] ?? 7,
-                $data['is_preferred'] ?? 0
-            ]);
-            sendJSON(['success' => true, 'message' => 'Producto agregado al proveedor']);
-        } catch (PDOException $e) {
-            sendJSON(['error' => $e->getMessage()], 500);
-        }
-        break;
-
-    case 'low_stock':
-        if (!isAuthenticated()) sendJSON(['error' => 'Unauthorized'], 403);
-        try {
-            $stmt = $pdo->query("SELECT p.*, c.name as category_name 
-                FROM products p 
-                LEFT JOIN categories c ON p.category_id = c.id 
-                WHERE p.is_active = 1 AND p.stock <= p.min_stock 
-                ORDER BY p.stock ASC");
-            $products = $stmt->fetchAll();
-            sendJSON(['products' => $products, 'count' => count($products)]);
-        } catch (PDOException $e) {
-            sendJSON(['error' => $e->getMessage()], 500);
-        }
-        break;
-
-    case 'list_providers':
-        if (!isAdmin()) sendJSON(['error' => 'Unauthorized'], 403);
-        try {
-            $stmt = $pdo->query("SELECT id, username, full_name, email FROM users WHERE role = 'provider' ORDER BY username");
-            $providers = $stmt->fetchAll();
-            sendJSON(['providers' => $providers]);
-        } catch (PDOException $e) {
-            sendJSON(['error' => $e->getMessage()], 500);
-        }
-        break;
-
-    case 'list_products':
-        if (!isAuthenticated()) sendJSON(['error' => 'Unauthorized'], 403);
-        try {
-            $stmt = $pdo->query("SELECT id, sku, name, stock, price FROM products WHERE is_active = 1 ORDER BY name");
-            $products = $stmt->fetchAll();
-            sendJSON(['products' => $products]);
-        } catch (PDOException $e) {
-            sendJSON(['error' => $e->getMessage()], 500);
-        }
-        break;
-
-    default:
-        sendJSON(['error' => 'Acción no válida'], 400);
+    } elseif ($action === 'delete_supplier') {
+        $id = $input['id'] ?? 0;
+        $stmt = $pdo->prepare('UPDATE suppliers SET is_active = 0 WHERE id = ?');
+        $stmt->execute([$id]);
+        sendJSON(['success' => true]);
+    }
 }
+
+sendJSON(['error' => 'Invalid action'], 400);
 ?>

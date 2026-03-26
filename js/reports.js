@@ -9,8 +9,11 @@ const Reports = {
         const today = new Date();
         const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
         
-        document.getElementById('repDateFrom').value = firstDay.toISOString().split('T')[0];
-        document.getElementById('repDateTo').value = today.toISOString().split('T')[0];
+        const dateFromEl = document.getElementById('repDateFrom');
+        const dateToEl = document.getElementById('repDateTo');
+        
+        if (dateFromEl) dateFromEl.value = firstDay.toISOString().split('T')[0];
+        if (dateToEl) dateToEl.value = today.toISOString().split('T')[0];
         
         this.loadReport();
     },
@@ -26,15 +29,13 @@ const Reports = {
 
     loadReport: function(tabId) {
         const activeTab = tabId || document.querySelector('.tab.active')?.dataset.tab || 'sales';
-        const dateFrom = document.getElementById('repDateFrom').value;
-        const dateTo = document.getElementById('repDateTo').value;
+        const dateFrom = document.getElementById('repDateFrom')?.value || '';
+        const dateTo = document.getElementById('repDateTo')?.value || '';
         
         switch(activeTab) {
             case 'sales': this.loadSalesReport(dateFrom, dateTo); break;
             case 'cyber': this.loadCyberReport(dateFrom, dateTo); break;
-            case 'products': this.loadTopProducts(dateFrom, dateTo); break;
             case 'inventory': this.loadInventoryReport(); break;
-            case 'profit': this.loadProfitLoss(dateFrom, dateTo); break;
         }
     },
 

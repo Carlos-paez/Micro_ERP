@@ -9,13 +9,6 @@ const Cyber = {
         await this.loadStations();
         await this.loadActiveSessions();
         await this.loadServices();
-        this.setupDates();
-    },
-
-    setupDates: function() {
-        const today = new Date().toISOString().split('T')[0];
-        document.getElementById('histDateFrom').value = today;
-        document.getElementById('histDateTo').value = today;
     },
 
     switchTab: function(tabId) {

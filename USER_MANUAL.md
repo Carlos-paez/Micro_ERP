@@ -1,65 +1,402 @@
-# Manual de Usuario - Sistema Micro_ERP Web
+# Manual de Usuario - Sistema Micro ERP
 
-Bienvenido al Manual de Usuario Oficial. Este sistema consta de una plataforma web diseñada para la administración sencilla y rápida de Inventarios, Ventas, Préstamos y Trato de Proveedores para su Local/Empresa. Todo funciona desde un único panel (Dashboard) intuitivo.
+## Índice
 
----
-
-## 1. Acceso al Sistema (Login y Registro)
-
-Al ingresar a la plataforma, se topará con la ventana de inicio de sesión:
-- **Iniciar sesión**: Ingrese su Nombre de Usuario y Contraseña para acceder a la terminal de trabajo.
-- **Crear una cuenta nueva**: Si no posee credenciales, presione `"¿No tienes cuenta? Regístrate aquí"`. El sistema le pedirá un Nombre, una Contraseña, y fundamentalmente elegir un **Estatus o Rol** (`Administrador` o `Proveedor`).
-
-> **Nota Crítica sobre los Roles:**
-> *   `Administrador` (Usted o sus empleados de confianza): Tienen acceso a todo. Almacenes, ventas, cajas registradoras.
-> *   `Proveedor` (Terceros distribuidores): Al ingresar, el sistema los bloqueará y derivará *exclusivamente* a su único apartado permitido, el módulo de **Pedidos a Proveedores**. No podrán husmear sus ventas totales, finanzas, u otros módulos críticos.
+1. [Introducción](#1-introducción)
+2. [Acceso al Sistema](#2-acceso-al-sistema)
+3. [Dashboard](#3-dashboard)
+4. [Gestión de Inventario](#4-gestión-de-inventario)
+5. [Módulo de Proveedores](#5-módulo-de-proveedores)
+6. [Cibercontrol](#6-cibercontrol)
+7. [Equipamiento](#7-equipamiento)
+8. [Reportes](#8-reportes)
+9. [Resolución de Problemas](#9-resolución-de-problemas)
 
 ---
 
-## 2. Dashboard (Panel Principal del Administrador)
+## 1. Introducción
 
-Este es el cerebro del negocio. Visualizará en tiempo real:
-- Ingresos Totales (Ventas a lo largo del tiempo).
-- Total de Productos guardados, cantidad de equipos prestados, y **Alertas en rojo señalándole cuántos productos tienen "Stock Bajo (< 10)"**.
-- **Registro de Ventas Recientes:** Una tabla de los últimos despachos monetarios realizados, a quienes, fecha y totales recolectados.
+Micro ERP es un sistema de gestión integral diseñado para administrar de manera eficiente el inventario, ventas, proveedores, cibercafé y equipamiento de tu negocio.
 
----
-
-## 3. Módulo de Inventario (Almacén Central)
-
-*Disponible solo para Administradores.* Este panel enlista todo lo que el local vende.
-
-**Botones Clave:**
-1. **[+ Nuevo Producto]**: Permite registrar a la base de datos de la empresa un ítem completamente inédito ("Galletas de Limón").
-2. **[Ajustar] (Botón Azul en la tabla)**: Úselo cuando deba agregar manualmente cargamento extra o hacer devoluciones sin registrarlos como ventas directas de caja.
-3. **[Eliminar] (Botón Rojo en la tabla)**: Eliminará ese artículo para siempre. **¡Precaución!** Esto hará desaparecer históricamente de todos los libros de cajas los registros previos asociados a ventas de ese producto en específico.
-4. **[Registrar Venta] (Botón Naranja Principal)**: Este el corazón del negocio (Punto de Venta o POS). Al ser presionado, elija rápidamente de la lista desplegable el artículo que un cliente está solicitando frente el mostrador, ingrese la cantidad y confirme. **Esta acción restará matemáticamente el inventario del local en tiempo real.**
+### Requisitos previos
+- Navegador web moderno (Chrome, Firefox, Edge)
+- Conexión a la base de datos configurada
+- Credenciales de acceso proporcionadas por el administrador
 
 ---
 
-## 4. Módulo de Pedidos a Proveedores (Compras)
+## 2. Acceso al Sistema
 
-*Disponible para Administradores y Proveedores.* Aquí, la comunicación externa a interno ocurre. Todo local necesita resurtirse. 
+### 2.1 Iniciar Sesión
 
-**Flujo y pasos para efectuar re-surtido de Stocks:**
-1. Alguien debe presionar **[+ Nuevo Pedido al Proveedor]** y escoger el artículo a surtir. 
-   - El *Proveedor* solo genera una petición genérica. El *Administrador* inclusive puede seleccionar el "Número de ID" específico de un proveedor para exigirle mercancías.
-2. El Pedido nace en estado **"Pendiente"** de color Naranja.
-   - El *Proveedor* tendrá un botón de "Cancelar", y otro de "Marcar Enviado".
-   - El *Administrador* no puede aprobarse las cosas a si mismo, solo observará y podrá cancelar la solicitud de compra.
-3. El *Proveedor* sube el cargamento de mercancía al camión repartidor y desde su computadora en el sistema aprieta **"Marcar Enviado"**.
-   - El estado del pedimento pasa a color Azul "En Camino".
-4. El camión llega al local. El *Administrador* lo inspecciona, abre el sistema y presiona el botón Verde **Recibir y Actualizar Stock**. 
-   - ¡Magia! El evento se clausura en "Completado", cerrando el documento y todos sus "ítems" en cuestión fueron agregados y sumados velozmente al **Inventario**.
+1. Abre tu navegador y accede a la URL del sistema
+2. En la pantalla de login, ingresa:
+   - **Usuario**: Tu nombre de usuario
+   - **Contraseña**: Tu contraseña
+3. Haz clic en "Ingresar"
+
+### 2.2 Crear una Cuenta
+
+Si no tienes credenciales:
+
+1. Haz clic en "¿No tienes cuenta? Regístrate aquí"
+2. Completa el formulario:
+   - **Usuario**: Nombre de acceso único
+   - **Contraseña**: Mínimo 6 caracteres
+   - **Nombre completo**: Tu nombre real
+   - **Rol**: Selecciona el rol apropiado
+3. Haz clic en "Crear Cuenta"
+
+### 2.3 Roles de Usuario
+
+| Rol | Descripción | Acceso |
+|-----|-------------|--------|
+| **Administrador** | Dueño o gerente | Todos los módulos |
+| **Proveedor** | Proveedor externo | Solo pedidos |
+| **Operador** | Empleado de atención | Inventario y Cibercontrol |
 
 ---
 
-## 5. Módulo de Equipamiento Prestado
+## 3. Dashboard
 
-Este menú es independiente de las ventas y funge para el control de "Préstamo de Utilería" y tiempo prestado a usuarios locales (ej. Cybercafés prestando computadoras, Gimnasios ofreciendo Cintas Estáticas de cardio por 30 minutos, billares prestando mesas, etc.).
+El Dashboard es el panel principal que muestra una visión general del negocio.
 
-**Acciones Permitidas:**
-- **[+ Nuevo Equipo]**: Dé de alta una Activo local (Ej. "Mesa de Billar N° 4"). Aparecerá rotulada en verde como "Disponible".
-- **[En Mantenimiento] (Botón Naranja)**: Si el equipo de rompió, presiónelo. Quedará rotulado en gris/amarillo de manera permanente por lo que será bloqueado para poder prestarse a clientes hasta que el botón **[Hacer Disponible]** sea revertido.
-- **[Registrar Préstamo]**: Si hay un equipo Verde (Disponible), puede cedérselo a un Nombre de Cliente predeterminado estipulando en un reloj numérico `"Minutos que durará el uso"`.
-- **Reloj Automático (Timer)**: Una vez prestado el equipo pasará a estado Rojo "En Uso", el contador interno empezará y usted puede seguir atendiendo otros menús de inventario. Cuando en segundo plano el tiempo final recaiga a "0"... el sistema disparará un ruido y una molesta Alerta en el centro de su navegador (`"Ej: Tiempo expirado de PC Master Número 1."`) para que le ordene al cliente su devolución, presione **"Marcar Devuelto"** y termine el préstamo. Así de simple.
+### 3.1 Estadísticas Disponibles
+
+- **Ventas del Día**: Ingresos por ventas hoy
+- **Ventas del Mes**: Ingresos por ventas en el mes actual
+- **Cibercafé Hoy**: Ingresos del cibercafé hoy
+- **Servicios Hoy**: Ingresos por servicios adicionales
+- **Sesiones Activas**: Computadoras en uso actualmente
+- **Equipos en Uso**: Equipamiento prestado
+- **Valor del Inventario**: Valor total del stock
+- **Pedidos Pendientes**: Pedidos a proveedores sin recibir
+
+### 3.2 Secciones del Dashboard
+
+- **Ventas Recientes**: Lista de últimas ventas realizadas
+- **Sesiones Activas**: Cibercafé con equipos en uso
+- **Productos con Stock Bajo**: Alerta de inventario bajo
+- **Pedidos Recientes**: Seguimiento de pedidos a proveedores
+
+### 3.3 Filtrar por Fechas
+
+Utiliza los campos de fecha para filtrar estadísticas:
+- Fecha inicial
+- Fecha final
+
+---
+
+## 4. Gestión de Inventario
+
+Este módulo permite gestionar todos los productos del negocio.
+
+### 4.1 Ver Productos
+
+Al acceder al módulo de inventario, verás una tabla con todos los productos que incluye:
+- SKU (código interno)
+- Nombre del producto
+- Categoría
+- Precio de venta
+- Costo
+- Stock actual
+- Valor total en inventario
+
+### 4.2 Crear Nuevo Producto
+
+1. Haz clic en el botón **"+ Nuevo Producto"**
+2. Completa el formulario:
+   - **Nombre**: Nombre del producto
+   - **SKU**: Código único (se genera automáticamente)
+   - **Categoría**: Selecciona una categoría
+   - **Precio**: Precio de venta
+   - **Costo**: Precio de adquisición
+   - **Stock inicial**: Cantidad actual
+   - **Stock mínimo**: Alerta cuando baje de este nivel
+   - **Stock máximo**: Cantidad máxima recomendada
+   - **Unidad**: unidad, kilo, litro, etc.
+3. Haz clic en "Guardar"
+
+### 4.3 Editar Producto
+
+1. Busca el producto en la tabla
+2. Haz clic en el botón de editar (lápiz)
+3. Modifica los campos necesarios
+4. Haz clic en "Guardar Cambios"
+
+### 4.4 Eliminar Producto
+
+1. Busca el producto en la tabla
+2. Haz clic en el botón de eliminar (basura)
+3. Confirma la eliminación
+
+**⚠️ Advertencia**: Eliminar un producto también elimina todas las ventas asociadas.
+
+### 4.5 Registrar Venta (Punto de Venta)
+
+1. Haz clic en **"💰 Registrar Venta"**
+2. Selecciona el producto de la lista
+3. Ingresa la cantidad
+4. Opcional: Agrega más productos
+5. Selecciona el método de pago:
+   - Efectivo
+   - Tarjeta
+   - Transferencia
+6. Ingresa el nombre del cliente (opcional)
+7. Haz clic en "Completar Venta"
+
+El sistema automáticamente:
+- Crea el registro de venta
+- Resta el stock del inventario
+- Registra la transacción
+
+### 4.6 Ajustar Stock
+
+Para corregir el inventario (entradas, devoluciones, mermas):
+
+1. Haz clic en **"Ajustar Stock"**
+2. Selecciona el producto
+3. Indica:
+   - **Tipo**: Entrada o Salida
+   - **Cantidad**: Cuántos unidades
+   - **Notas**: Razón del ajuste
+4. Haz clic en "Guardar"
+
+### 4.7 Filtros de Búsqueda
+
+- **Por categoría**: Filtra por tipo de producto
+- **Por stock**: Muestra solo productos agotados o con stock bajo
+- **Buscar**: Texto para buscar por nombre o SKU
+
+---
+
+## 5. Módulo de Proveedores
+
+Gestión de pedidos de reposición de inventario.
+
+### 5.1 Ver Proveedores
+
+Lista de todos los proveedores dados de alta con:
+- Nombre de empresa
+- Contacto
+- Teléfono y email
+- Pedidos realizados
+
+### 5.2 Crear Proveedor
+
+1. Haz clic en **"+ Nuevo Proveedor"**
+2. Completa los datos:
+   - Nombre de empresa
+   - Nombre del contacto
+   - Email y teléfono
+   - Dirección
+   - RFC/Tax ID
+   - Términos de pago
+3. Guarda el proveedor
+
+### 5.3 Crear Pedido
+
+1. Haz clic en **"+ Nuevo Pedido"**
+2. Selecciona el proveedor
+3. Agrega productos:
+   - Producto
+   - Cantidad
+   - Costo unitario
+4. El sistema calcula el total
+5. Guarda el pedido
+
+### 5.4 Estados del Pedido
+
+| Estado | Color | Descripción |
+|--------|-------|-------------|
+| Pendiente | Naranja | Esperando envío |
+| Enviado | Azul | En camino |
+| En Tránsito | Azul claro | En proceso de entrega |
+| Recibido | Verde | Completado y stock actualizado |
+| Cancelado | Rojo | Cancelado por alguna razón |
+
+### 5.5 Flujo de Pedido
+
+1. **Admin crea pedido** → Estado: Pendiente
+2. **Proveedor lo revisa** → Marca como Enviado
+3. **En tránsito** → Actualiza estado
+4. **Admin recibe** → Marca como Recibido
+5. **Stock se actualiza** → El inventario aumenta
+
+---
+
+## 6. Cibercontrol
+
+Control de sesiones de cibercafé/computadoras.
+
+### 6.1 Estaciones
+
+Cada computadora o estación tiene:
+- Nombre (PC-01, PC-02, etc.)
+- Ubicación en el local
+- Tarifa por hora
+- Estado actual
+
+### 6.2 Estados de Estación
+
+| Estado | Color | Significado |
+|--------|-------|-------------|
+| Disponible | Verde | Lista para usar |
+| Ocupada | Rojo | En uso actualmente |
+| Mantenimiento | Amarillo | No disponible |
+| Offline | Gris | Apagada/desconectada |
+
+### 6.3 Iniciar Sesión
+
+1. Selecciona una estación disponible
+2. Ingresa el nombre del cliente
+3. El sistema registra la hora de inicio
+4. La estación cambia a "Ocupada"
+
+### 6.4 Pausar Sesión
+
+Si el cliente necesita pausa:
+1. Haz clic en "Pausar"
+2. El tiempo se detiene
+3. El cliente puede reanudar cuando quiera
+
+### 6.5 Finalizar Sesión
+
+1. Selecciona la estación ocupada
+2. Haz clic en "Finalizar"
+3. El sistema calcula:
+   - Tiempo total usado
+   - Costo basado en hora/tarifa
+4. Imprime o muestra el total a pagar
+
+---
+
+## 7. Equipamiento
+
+Control de préstamo de equipos (proyectores, cámaras, etc.).
+
+### 7.1 Ver Equipos
+
+Lista de equipos disponibles con:
+- Nombre y descripción
+- Número de serie
+- Estado actual
+- Tarifa por hora/día
+
+### 7.2 Estados de Equipo
+
+| Estado | Color | Significado |
+|--------|-------|-------------|
+| Disponible | Verde | Listo para prestar |
+| En Uso | Rojo | Prestado actualmente |
+| Mantenimiento | Amarillo | En reparación |
+
+### 7.3 Prestar Equipo
+
+1. Selecciona un equipo disponible
+2. Haz clic en **"Prestar"**
+3. Ingresa:
+   - Nombre del cliente
+   - Duración prevista (minutos)
+4. Confirma el préstamo
+
+### 7.4 Devolver Equipo
+
+1. Cuando el cliente devuelve
+2. Haz clic en **"Devolver"**
+3. El equipo vuelve a estar disponible
+
+### 7.5 Alertas
+
+El sistema muestra alertas cuando:
+- Un préstamo expira
+- Un equipo está en retraso
+- El tiempo está por terminar
+
+---
+
+## 8. Reportes
+
+Módulo de análisis y estadísticas.
+
+### 8.1 Reporte de Dashboard
+
+Estadísticas generales:
+- Total de productos
+- Productos con stock bajo
+- Ventas del día y mes
+- Ingresos de cibercafé
+- Valor del inventario
+
+### 8.2 Generar Reportes
+
+Selecciona:
+- Tipo de reporte
+- Rango de fechas
+- Categoría (opcional)
+
+### 8.3 Exportar
+
+Los reportes pueden mostrar:
+- Totales por período
+- Gráficos de tendencia
+- Productos más vendidos
+- Análisis de inventario
+
+---
+
+## 9. Resolución de Problemas
+
+### No puedo iniciar sesión
+- Verifica que el usuario y contraseña sean correctos
+- Confirma que el usuario está activo (consulta al admin)
+- Limpia las cookies del navegador
+
+### Error al cargar módulos
+- Verifica que la base de datos esté funcionando
+- Confirma que el servidor PHP esté ejecutándose
+- Revisa la consola del navegador (F12) para errores
+
+### No aparecen productos
+- Verifica que hay productos dados de alta
+- Confirma que el usuario tiene permisos
+- Intenta actualizar la página
+
+### Las ventas no restan inventario
+- Verifica que el producto tenga stock
+- Confirma que la venta se completó correctamente
+- Consulta el registro de transacciones
+
+### No puedo crear proveedores/pedidos
+- Solo administradores pueden gestionar proveedores
+- Verifica tu rol en el sistema
+
+### Error de conexión a la base de datos
+- Confirma que MySQL está ejecutándose
+- Verifica las credenciales en `api/db.php`
+- Asegúrate que la base de datos existe
+
+---
+
+## Acceso Rápido
+
+| Tarea | Dónde ir |
+|-------|----------|
+| Ver inventario | Módulo Inventario |
+| Registrar venta | Botón "Registrar Venta" en Inventario |
+| Crear pedido | Módulo Proveedores |
+| Iniciar cibercafé | Módulo Cibercontrol |
+| Prestar equipo | Módulo Equipamiento |
+| Ver estadísticas | Dashboard |
+
+---
+
+## Contacto y Soporte
+
+Para cualquier duda o problema:
+1. Consulta este manual
+2. Contacta al administrador del sistema
+3. Revisa la documentación técnica
+
+**Versión del Sistema**: 1.0
+**Última Actualización**: 2026

@@ -1,106 +1,402 @@
-# Documentación Técnica - Sistema ERP Web Avanzado
+# Documentación Técnica - Sistema Micro ERP
 
 ## 1. Arquitectura del Sistema
-El sistema está construido como una **Single Page Application (SPA)** simple utilizando Vanilla JavaScript, apoyado por una API RESTful construida en PHP puro y una base de datos relacional PostgreSQL. No se utilizan frameworks de terceros (como Laravel, React o Bootstrap), garantizando máxima ligereza, rapidez y control directo sobre el código.
+
+El sistema está construido como una **Single Page Application (SPA)** utilizando Vanilla JavaScript, con una API RESTful construida en PHP puro y una base de datos MySQL. No se utilizan frameworks de terceros, garantizando máxima ligereza y control directo sobre el código.
 
 ### 1.1 Stack Tecnológico
-- **Frontend**: HTML5, Vanilla CSS3 (CSS Variables, Flexbox, Grid), Vanilla JavaScript (ES6+).
-- **Backend**: PHP 8+ (PDO para abstracción de base de datos).
-- **Base de Datos**: PostgreSQL 13+.
-- **Servidor Web**: PHP Built-in Server (para desarrollo) o Apache/Nginx (producción).
 
----
+| Capa | Tecnología |
+|------|------------|
+| Frontend | HTML5, Vanilla CSS3, Vanilla JavaScript (ES6+) |
+| Backend | PHP 8+ con PDO |
+| Base de Datos | MySQL 5.7+ |
+| Servidor Web | Apache/Nginx o PHP Built-in Server |
+
+### 1.2 Patrón Arquitectónico
+
+```
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│   Navegador     │────▶│  API REST PHP   │────▶│  MySQL Database │
+│  (Frontend)     │◀────│    (Backend)    │◀────│                 │
+└─────────────────┘     └─────────────────┘     └─────────────────┘
+```
 
 ## 2. Estructura de Directorios
 
-```text
-d:\DEV\prueba\
-├── api/                        # Controladores del Backend (Endpoints)
-│   ├── db.php                  # Conexión PDO a PostgreSQL y utilidades globales.
-│   ├── auth.php                # Gestión de sesiones, login y registro de usuarios.
-│   ├── dashboard.php           # Estadísticas generales e indicadores (KPIs).
-│   ├── equipment.php           # Gestión de estados de equipos y préstamos.
-│   ├── inventory.php           # CRUD de inventario y registro de ventas.
-│   └── providers.php           # Gestión de pedidos, control de roles y estados de envío.
+```
+Micro_ERP/
+├── api/                        # Controladores del Backend
+│   ├── db.php                  # Conexión PDO y utilidades globales
+│   ├── auth.php                # Autenticación y gestión de sesiones
+│   ├── dashboard.php           # Estadísticas y KPIs
+│   ├── equipment.php           # Gestión de equipos y préstamos
+│   ├── inventory.php           # CRUD de inventario y ventas
+│   ├── providers.php           # Gestión de pedidos a proveedores
+│   ├── cyber.php               # Control de cibercafé
+│   ├── reports.php             # Reportes y estadísticas avanzadas
+│   └── categories.php          # Categorías de productos
 ├── css/
-│   └── style.css               # Sistema de diseño global (Tema oscuro, responsive).
-├── js/                         # Lógica Frontend y consumo de APIs
-│   ├── app.js                  # Enrutador SPA, manejo de sesiones UI, y modales base.
-│   ├── equipment.js            # Lógica de temporización local (`setInterval` y alertas nativas).
-│   ├── inventory.js            # Tablas interactivas, creación/edición de productos y ventas.
-│   └── provider.js             # Lógica de proveedores, workflow de pedidos de 3 estados.
-├── index.html                  # Punto de entrada público (Vista Login/Registro).
-├── app.html                    # Estructura principal de la SPA (solo para usuarios autenticados).
-├── init.sql                    # Script DDL de generación de la base de datos completa con datos default.
-├── TECHNICAL_DOCUMENTATION.md  # Este archivo.
-└── USER_MANUAL.md              # Manual para el usuario final.
+│   └── style.css               # Sistema de diseño global
+├── js/                         # Lógica del Frontend
+│   ├── app.js                  # Controlador principal SPA
+│   ├── equipment.js            # Gestión de equipamiento
+│   ├── inventory.js            # Inventario y ventas
+│   ├── providers.js            # Gestión de proveedores
+│   ├── cyber.js                # Control de cibercafé
+│   └── reports.js              # Reportes
+├── index.html                  # Punto de entrada (Login/Registro)
+├── app.html                    # Estructura principal SPA
+├── init.sql                    # Esquema completo de base de datos
+├── README.md                   # Guía de inicio
+└── USER_MANUAL.md              # Manual de usuario
 ```
 
----
+## 3. Modelo de Base de Datos
 
-## 3. Modelo de Base de Datos (PostgreSQL)
+### 3.1 Esquema de Tablas
 
-El esquema de BDD es relacional e incorpora las siguientes tablas principales:
+#### users - Usuarios del sistema
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| id | INT AUTO_INCREMENT | Identificador único |
+| username | VARCHAR(50) | Nombre de usuario (único) |
+| email | VARCHAR(100) | Correo electrónico |
+| password_hash | VARCHAR(255) | Contraseña hasheada |
+| full_name | VARCHAR(100) | Nombre completo |
+| role | ENUM('admin','provider','operator') | Rol del usuario |
+| is_active | TINYINT(1) | Estado activo |
+| created_at | TIMESTAMP | Fecha de creación |
 
-1. **`users`**: Soporta inicio de sesión clásico, con el campo `role` predefinido (`admin`, `provider`). Las contraseñas se almacenan mediante `password_hash()` de PHP (algoritmo bcrypt/argon2).
-2. **`products`**: Catálogo base del inventario. La columna `stock` funge como fuente de la verdad para la disponibilidad actual.
-3. **`inventory_transactions`**: Registro histórico inmutable de entradas y salidas de cada producto (`type` = 'in' | 'out'). Las ventas y cierres de pedidos de proveedores disparan *triggers lógicos* automáticos (desde el código PHP) a esta tabla.
-4. **`sales` y `sale_items`**: Almacenan agrupadas las transacciones salientes ejecutadas internamente frente al local, y están atadas bajo la restricción `ON DELETE CASCADE`.
-5. **`provider_orders` y `provider_order_items`**: Gestionan las reposiciones. Emplean campo tipo ENUM escalar para administrar la máquina de estado del pedido:
-   - `pending`: Creado, el proveedor debe despacharlo.
-   - `fulfilled`: Proveedor lo empaqueta y reporta como enviado.
-   - `completed`: El administrador recibe físicamente la carga; el ciclo se cierra y el stock aumenta.
-   - `cancelled`: El ciclo es abortado prematuramente sin alterar inventarios.
-6. **`equipment` y `equipment_loans`**: Manejan activos finos de la empresa. `equipment` tiene un estado fijo dinámico (`available`, `in_use`, `maintenance`).
+#### categories - Categorías de productos
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| id | INT AUTO_INCREMENT | Identificador único |
+| name | VARCHAR(100) | Nombre de categoría |
+| description | TEXT | Descripción |
+| parent_id | INT | Categoría padre (subcategorías) |
 
----
+#### products - Catálogo de productos
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| id | INT AUTO_INCREMENT | Identificador único |
+| sku | VARCHAR(50) | Código SKU (único) |
+| name | VARCHAR(100) | Nombre del producto |
+| description | TEXT | Descripción |
+| category_id | INT | FK a categories |
+| price | DECIMAL(10,2) | Precio de venta |
+| cost_price | DECIMAL(10,2) | Costo de adquisición |
+| stock | INT | Cantidad en inventario |
+| min_stock | INT | Stock mínimo alerta |
+| max_stock | INT | Stock máximo |
+| unit | VARCHAR(20) | Unidad de medida |
+| barcode | VARCHAR(50) | Código de barras |
+| is_active | TINYINT(1) | Estado activo |
 
-## 4. Patrones de Diseño Aplicados
+#### sales - Registro de ventas
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| id | INT AUTO_INCREMENT | Identificador único |
+| total_amount | DECIMAL(10,2) | Total de la venta |
+| payment_method | ENUM | Método de pago |
+| status | ENUM('pending','completed','cancelled') | Estado |
+| customer_name | VARCHAR(100) | Nombre del cliente |
+| created_at | TIMESTAMP | Fecha de venta |
 
-### 4.1. Carga Dinámica de Vistas (SPA)
-El archivo `app.js` contiene un motor de enrutamiento basado en anclas (Hash Routing via `window.location.hash`). 
+#### sale_items - Ítems de cada venta
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| id | INT AUTO_INCREMENT | Identificador único |
+| sale_id | INT | FK a sales |
+| product_id | INT | FK a products |
+| quantity | INT | Cantidad vendida |
+| price | DECIMAL(10,2) | Precio unitario |
+
+#### providers - Proveedores
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| id | INT AUTO_INCREMENT | Identificador único |
+| company_name | VARCHAR(100) | Nombre de empresa |
+| contact_name | VARCHAR(100) | Contacto |
+| email | VARCHAR(100) | Correo |
+| phone | VARCHAR(20) | Teléfono |
+| address | TEXT | Dirección |
+| is_active | TINYINT(1) | Estado activo |
+
+#### provider_orders - Pedidos a proveedores
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| id | INT AUTO_INCREMENT | Identificador único |
+| provider_id | INT | FK a providers |
+| total_amount | DECIMAL(10,2) | Total del pedido |
+| status | ENUM | Estado del pedido |
+| created_at | TIMESTAMP | Fecha de creación |
+
+#### computer_stations - Estaciones de cibercafé
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| id | INT AUTO_INCREMENT | Identificador único |
+| name | VARCHAR(50) | Nombre (PC-01, etc.) |
+| hostname | VARCHAR(100) | Hostname |
+| ip_address | VARCHAR(45) | Dirección IP |
+| status | ENUM | Estado (available/occupied/maintenance) |
+| hourly_rate | DECIMAL(8,2) | Tarifa por hora |
+
+#### cyber_sessions - Sesiones de cibercafé
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| id | INT AUTO_INCREMENT | Identificador único |
+| station_id | INT | FK a computer_stations |
+| customer_name | VARCHAR(100) | Nombre del cliente |
+| start_time | TIMESTAMP | Inicio de sesión |
+| end_time | TIMESTAMP | Fin de sesión |
+| total_cost | DECIMAL(10,2) | Costo total |
+| status | ENUM | Estado (active/paused/completed) |
+
+#### equipment - Equipamiento prestable
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| id | INT AUTO_INCREMENT | Identificador único |
+| name | VARCHAR(100) | Nombre del equipo |
+| description | TEXT | Descripción |
+| serial_number | VARCHAR(50) | Número de serie |
+| status | ENUM | Estado (available/in_use/maintenance) |
+| hourly_rate | DECIMAL(8,2) | Tarifa por hora |
+| category | VARCHAR(50) | Categoría |
+
+#### equipment_loans - Préstamos de equipo
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| id | INT AUTO_INCREMENT | Identificador único |
+| equipment_id | INT | FK a equipment |
+| customer_name | VARCHAR(100) | Cliente |
+| start_time | TIMESTAMP | Inicio |
+| end_time | TIMESTAMP | Fin planeado |
+| actual_end_time | TIMESTAMP | Fin real |
+| status | ENUM | Estado (active/completed/overdue) |
+
+## 4. Patrones de Diseño
+
+### 4.1 SPA (Single Page Application)
+
+El archivo `app.js` maneja la navegación entre módulos sin recargar la página:
+
 ```javascript
-// app.js - Motor simplificado de enrutamiento
-app.navigate(viewId);
-// Clona el contenido de los contenedores <template id="..."> y lo inyecta en <main id="view-container">.
+// app.js - Navegación SPA
+app.navigate('dashboard');  // Carga el módulo dashboard
+app.navigate('inventory');  // Carga el módulo inventario
 ```
-*   **Beneficio**: El DOM se recicla sin refrescar la página.
 
-### 4.2. Controlador de Módulo
-En el directorio `/api/`, los archivos PHP operan bajo un patrón derivado de Front-Controller modificado, discriminando mediante el parámetro GET `action`.
+Los templates se definen en `app.html` usando elementos `<template>` que se clonan dinámicamente.
+
+### 4.2 API REST con Front Controller
+
+Todos los endpoints PHP siguen el mismo patrón:
+
 ```php
 $action = $_GET['action'] ?? '';
-if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-     if ($action === 'list') { ... } 
-} elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
-     if ($action === 'create') { ... }
+switch($action) {
+    case 'list':
+        // Listar recursos
+        break;
+    case 'create':
+        // Crear recurso
+        break;
+    case 'update':
+        // Actualizar recurso
+        break;
+    case 'delete':
+        // Eliminar recurso
+        break;
 }
 ```
 
-### 4.3. Restricción de Roles en la API
-Toda tabla sensible es verificada internamente:
+### 4.3 Autenticación y Sesiones
+
 ```php
-if ($role !== 'admin' && no_es_dueño_del_recurso) { 
-    sendJSON(['error' => 'Permisos insuficientes'], 403); 
+// Verificar autenticación
+if (!isset($_SESSION['user_id'])) {
+    sendJSON(['error' => 'Unauthorized'], 403);
+}
+
+// Verificar rol de administrador
+if ($_SESSION['role'] !== 'admin') {
+    sendJSON(['error' => 'Forbidden'], 403);
 }
 ```
 
-### 4.4. Integridad Referencial Estricta (Transaccionalidad)
-Cualquier manipulación a elementos múltiples (por ejemplo, guardar una orden y sus ítems, luego actualizar el stock en productos) siempre se empaqueta en un bloque `try-catch` usando `pdo->beginTransaction()` y `pdo->commit()`. Si algo falla (ej: fallo de red), interviene el `pdo->rollBack()`. Así se preserva la integridad ACID.
+### 4.4 Transacciones y Integridad
 
----
+```php
+try {
+    $pdo->beginTransaction();
+    
+    //插入订单
+    $stmt->execute([...]);
+    $orderId = $pdo->lastInsertId();
+    
+    //插入订单项
+    foreach ($items as $item) {
+        $stmt->execute([...]);
+    }
+    
+    //更新库存
+    $stmt->execute([...]);
+    
+    $pdo->commit();
+} catch (PDOException $e) {
+    $pdo->rollBack();
+    sendJSON(['error' => $e->getMessage()], 500);
+}
+```
 
-## 5. Implementaciones Específicas de Flujo
+## 5. Flujos de Usuario
 
-### Alertador Client-Side (`equipment.js`)
-Dado que los préstamos estipulan un tiempo concreto (`duration_minutes`), se genera un cálculo local frente a la hora estática de inicio del servidor cada 5000ms. Al expirar `Date.now() > end_time`, se detonan las alertas. Se optimizó un Garbage Collector (`clearInterval`) que frena el loop indefinido si no hay componentes que auditar.
+### 5.1 Login y Autenticación
 
-### Seguridad
-- Las contraseñas viajan desde el formulario e inmediatamente son procesadas en `auth.php` a través de transacciones preparadas `prepare()` en PDO para truncar cualquier intento de **SQL Injection**.
-- Se requiere que el servidor PHP se configure para forzar cabeceras de caché contra el robo de sesiones y se recomienda HTTPS para un paso a producción definitivo.
+```
+1. Usuario ingresa credenciales en index.html
+2. Frontend envía POST a api/auth.php?action=login
+3. Backend verifica credenciales contra tabla 'users'
+4. Si válidas: crea sesión PHP y retorna datos del usuario
+5. Frontend redirige a app.html
+6. app.html verifica sesión con api/auth.php?action=session
+```
 
----
+### 5.2 Registro de Venta
 
-## 6. Errores Comunes o TroubleShooting
-1. **"could not find driver"**: Extensión `pdo_pgsql` faltante en el `php.ini` de Windows. Descomentar `extension=pdo_pgsql`.
-2. **"Uncaught (in promise) SyntaxError: Unexpected token < in JSON at position 0"**: Esto ocurre si hay advertencias nativas de PHP (`E_NOTICE`, `E_WARNING`) derramándose por la consola al momento en que se intenta retornar cabeceras `JSON`. Para prevenirlo, setear `display_errors = Off` en el `php.ini` de producción o asegurarse que la base de datos esté accesible en el TCP/IP 5432.
+```
+1. Operador hace clic en "Registrar Venta"
+2. Selecciona producto y cantidad
+3. Frontend envía POST a api/inventory.php?action=sell
+4. Backend:
+   - Crea registro en tabla 'sales'
+   - Crea registros en 'sale_items'
+   - Resta stock en 'products'
+   - Crea registro en 'inventory_transactions'
+5. Retorna éxito y actualiza UI
+```
+
+### 5.3 Pedido a Proveedor
+
+```
+1. Admin crea pedido seleccionando proveedor y productos
+2. Estado inicial: 'pending'
+3. Proveedor recibe notificación y marca como 'sent'
+4. Admin recibe mercancía y marca como 'received'
+5. Backend actualiza stock de productos
+6. Estado final: 'completed'
+```
+
+### 5.4 Sesión de Cibercafé
+
+```
+1. Cliente selecciona estación disponible
+2. Operador inicia sesión
+3. Backend registra inicio y calcula costo por tiempo
+4. Cliente puede pausar/reanudar
+5. Al finalizar, operador cierra sesión
+6. Backend calcula tiempo total y costo
+```
+
+## 6. Seguridad
+
+### 6.1 Protección contra SQL Injection
+
+```php
+// Uso de prepared statements
+$stmt = $pdo->prepare('SELECT * FROM users WHERE username = ?');
+$stmt->execute([$username]);
+```
+
+### 6.2 Hash de Contraseñas
+
+```php
+// Hash con bcrypt
+$hash = password_hash($password, PASSWORD_DEFAULT);
+
+// Verificación
+if (password_verify($password, $hash)) {
+    // Contraseña correcta
+}
+```
+
+### 6.3 Control de Acceso
+
+- Sesiones PHP con `session_start()`
+- Verificación de rol en cada endpoint
+- CORS no implementado (mismo origen)
+
+## 7. Configuración del Entorno
+
+### 7.1 Variables de Entorno (opcional)
+
+```php
+// db.php
+$host = getenv('DB_HOST') ?: 'localhost';
+$db   = getenv('DB_NAME') ?: 'micro_erp';
+$user = getenv('DB_USER') ?: 'root';
+$pass = getenv('DB_PASS') ?: '';
+$port = getenv('DB_PORT') ?: '3306';
+```
+
+### 7.2 Inicialización de Base de Datos
+
+```bash
+mysql -u root -p micro_erp < init.sql
+```
+
+El archivo `init.sql` contiene:
+- CREATE TABLE para todas las entidades
+- INSERT de datos iniciales (usuarios, productos, categorías, estaciones)
+
+## 8. Códigos de Respuesta API
+
+| Código | Significado |
+|--------|-------------|
+| 200 | OK - Solicitud exitosa |
+| 400 | Bad Request - Datos inválidos |
+| 401 | Unauthorized - No autenticado |
+| 403 | Forbidden - Sin permisos |
+| 404 | Not Found - Recurso no encontrado |
+| 500 | Internal Server Error - Error del servidor |
+
+## 9. Errores Comunes y Soluciones
+
+### 9.1 "Database connection failed"
+- Verificar que MySQL esté ejecutándose
+- Revisar credenciales en `api/db.php`
+- Confirmar que la base de datos existe
+
+### 9.2 "Call to undefined function sendJSON()"
+- Verificar que `api/db.php` se incluye correctamente
+-确保函数定义没有重复
+
+### 9.3 "Unknown column 'name'"
+- Ejecutar `init.sql` para crear todas las columnas
+- Verificar que la tabla tiene las columnas esperadas
+
+### 9.4 "Unauthorized"
+- Verificar que el navegador tiene cookies habilitadas
+- Iniciar sesión correctamente antes de acceder a la API
+
+## 10. Extensiones PHP Requeridas
+
+- `pdo` - PHP Data Objects
+- `pdo_mysql` - MySQL driver para PDO
+- `json` - Funciones JSON
+- `mbstring` - Cadenas multibyte
+
+Verificar con:
+```php
+php -m
+```
+
+## 11. Contributing
+
+Para contribuir al proyecto:
+1. Fork del repositorio
+2. Crear rama feature (`git checkout -b feature/nueva-funcionalidad`)
+3. Commit de cambios (`git commit -m 'Agrega nueva funcionalidad'`)
+4. Push a la rama (`git push origin feature/nueva-funcionalidad`)
+5. Crear Pull Request

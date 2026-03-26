@@ -1,9 +1,28 @@
-// js/inventory.js
+// js/inventory.js - Enhanced Inventory Module
 const Inventory = {
     products: [],
+    categories: [],
+    filteredProducts: [],
 
     init: async function() {
+        await this.loadCategories();
         await this.loadProducts();
+    },
+
+    loadCategories: async function() {
+        try {
+            const res = await fetch('api/categories.php?action=list');
+            const data = await res.json();
+            this.categories = data.categories || [];
+            
+            const select = document.getElementById('invCategoryFilter');
+            if (select) {
+                select.innerHTML = '<option value="">Todas las categorías</option>' +
+                    this.categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+            }
+        } catch (e) {
+            console.error('Error loading categories:', e);
+        }
     },
 
     loadProducts: async function() {
@@ -11,49 +30,141 @@ const Inventory = {
             const res = await fetch('api/inventory.php?action=list');
             const data = await res.json();
             this.products = data.products || [];
+            this.filteredProducts = this.products;
             this.renderTable();
+            this.renderSummary();
         } catch (e) {
             app.showAlert('Error cargando inventario', 'error');
         }
+    },
+
+    filterByCategory: function() {
+        const categoryId = document.getElementById('invCategoryFilter').value;
+        const stockFilter = document.getElementById('invStockFilter').value;
+        this.applyFilters(categoryId, stockFilter);
+    },
+
+    filterByStock: function() {
+        const categoryId = document.getElementById('invCategoryFilter').value;
+        const stockFilter = document.getElementById('invStockFilter').value;
+        this.applyFilters(categoryId, stockFilter);
+    },
+
+    search: function() {
+        const query = document.getElementById('invSearch').value.toLowerCase();
+        const categoryId = document.getElementById('invCategoryFilter').value;
+        const stockFilter = document.getElementById('invStockFilter').value;
+        
+        this.filteredProducts = this.products.filter(p => {
+            const matchSearch = !query || 
+                p.name.toLowerCase().includes(query) || 
+                (p.sku && p.sku.toLowerCase().includes(query));
+            
+            const matchCategory = !categoryId || p.category_id == categoryId;
+            
+            let matchStock = true;
+            if (stockFilter === 'low') matchStock = p.stock <= p.min_stock;
+            else if (stockFilter === 'out') matchStock = p.stock <= 0;
+            
+            return matchSearch && matchCategory && matchStock;
+        });
+        
+        this.renderTable();
+    },
+
+    applyFilters: function(categoryId, stockFilter) {
+        this.filteredProducts = this.products.filter(p => {
+            const matchCategory = !categoryId || p.category_id == categoryId;
+            
+            let matchStock = true;
+            if (stockFilter === 'low') matchStock = p.stock <= p.min_stock;
+            else if (stockFilter === 'out') matchStock = p.stock <= 0;
+            
+            return matchCategory && matchStock;
+        });
+        
+        this.renderTable();
     },
 
     renderTable: function() {
         const tbody = document.getElementById('inventoryTable');
         if (!tbody) return;
 
-        if (this.products.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No hay productos en el inventario</td></tr>';
+        if (this.filteredProducts.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">No hay productos que coincidan</td></tr>';
             return;
         }
 
-        tbody.innerHTML = this.products.map(p => `
-            <tr>
-                <td>#${p.id}</td>
-                <td>
-                    <div style="font-weight: 500;">${p.name}</div>
-                    <div style="font-size: 0.75rem;" class="text-muted">${p.description || ''}</div>
-                </td>
-                <td style="font-weight: 600;">$${parseFloat(p.price).toFixed(2)}</td>
-                <td>
-                    <span class="badge ${p.stock < 10 ? 'badge-danger' : 'badge-success'}">${p.stock}</span>
-                </td>
-                <td style="display: flex; gap: 0.5rem; justify-content: flex-start;">
-                    <button class="btn btn-primary" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;" onclick="Inventory.showAdjustStockModal(${p.id})">Ajustar</button>
-                    <button class="btn btn-danger" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;" onclick="Inventory.deleteProduct(${p.id})">Eliminar</button>
-                </td>
-            </tr>
-        `).join('');
+        tbody.innerHTML = this.filteredProducts.map(p => {
+            const stockClass = p.stock <= 0 ? 'badge-danger' : 
+                              p.stock <= p.min_stock ? 'badge-warning' : 'badge-success';
+            
+            return `
+                <tr>
+                    <td><code>${p.sku || '-'}</code></td>
+                    <td>
+                        <div style="font-weight: 500;">${p.name}</div>
+                        <div style="font-size: 0.75rem;" class="text-muted">${p.description || ''}</div>
+                    </td>
+                    <td>${p.category_name || '-'}</td>
+                    <td class="text-success" style="font-weight: 600;">$${parseFloat(p.price).toFixed(2)}</td>
+                    <td class="text-muted">$${parseFloat(p.cost_price || 0).toFixed(2)}</td>
+                    <td>
+                        <span class="badge ${stockClass}">${p.stock} ${p.unit || 'u'}</span>
+                        ${p.location ? `<div style="font-size: 0.7rem;" class="text-muted">📍 ${p.location}</div>` : ''}
+                    </td>
+                    <td class="text-primary">$${parseFloat(p.stock_value || 0).toFixed(2)}</td>
+                    <td>
+                        <div class="action-buttons">
+                            <button class="btn btn-primary btn-sm" onclick="Inventory.showAdjustStockModal(${p.id})" title="Ajustar Stock">±</button>
+                            <button class="btn btn-secondary btn-sm" onclick="Inventory.showHistory(${p.id})" title="Historial">📋</button>
+                            <button class="btn btn-danger btn-sm" onclick="Inventory.deleteProduct(${p.id})" title="Eliminar">🗑</button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    },
+
+    renderSummary: function() {
+        const container = document.getElementById('inventorySummary');
+        if (!container) return;
+
+        const totalProducts = this.products.length;
+        const totalValue = this.products.reduce((sum, p) => sum + (parseFloat(p.stock_value) || 0), 0);
+        const lowStock = this.products.filter(p => p.stock <= p.min_stock).length;
+        const outOfStock = this.products.filter(p => p.stock <= 0).length;
+
+        container.innerHTML = `
+            <div class="summary-item">
+                <span class="summary-label">Total Productos:</span>
+                <span class="summary-value">${totalProducts}</span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">Valor Total:</span>
+                <span class="summary-value text-success">$${totalValue.toFixed(2)}</span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">Stock Bajo:</span>
+                <span class="summary-value text-warning">${lowStock}</span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">Agotados:</span>
+                <span class="summary-value text-danger">${outOfStock}</span>
+            </div>
+        `;
     },
 
     showAdjustStockModal: function(productId) {
         const p = this.products.find(x => x.id === productId);
-        if(!p) return;
+        if (!p) return;
 
         const html = `
-            <form id="adjustForm" onsubmit="event.preventDefault(); Inventory.adjustStock(${productId})">
+            <form onsubmit="event.preventDefault(); Inventory.adjustStock(${productId})">
                 <div class="form-group">
                     <label class="form-label">Producto</label>
                     <input type="text" class="form-control" value="${p.name}" disabled>
+                    <small class="text-muted">Stock actual: ${p.stock} ${p.unit || 'u'}</small>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Tipo de Movimiento</label>
@@ -65,6 +176,10 @@ const Inventory = {
                 <div class="form-group">
                     <label class="form-label">Cantidad</label>
                     <input type="number" id="adjQty" class="form-control" min="1" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Notas</label>
+                    <input type="text" id="adjNotes" class="form-control" placeholder="Razón del ajuste...">
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn" onclick="app.closeModal()">Cancelar</button>
@@ -78,184 +193,98 @@ const Inventory = {
     adjustStock: async function(productId) {
         const type = document.getElementById('adjType').value;
         const qty = parseInt(document.getElementById('adjQty').value, 10);
+        const notes = document.getElementById('adjNotes').value;
 
         try {
             const res = await fetch('api/inventory.php?action=update_stock', {
                 method: 'POST',
-                headers:{ 'Content-Type': 'application/json'},
-                body: JSON.stringify({ product_id: productId, type: type, quantity: qty, notes: 'Manual adjustment' })
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ product_id: productId, type: type, quantity: qty, notes: notes })
             });
             const data = await res.json();
-            if(data.success) {
-                app.showAlert('Stock ajustado con éxito');
+            if (data.success) {
+                app.showAlert(`Stock ajustado. Nuevo stock: ${data.stock}`);
                 app.closeModal();
                 this.loadProducts();
-            } else throw new Error(data.error);
+            } else {
+                throw new Error(data.error);
+            }
         } catch (e) {
             app.showAlert(e.message, 'error');
         }
     },
 
-    deleteProduct: async function(productId) {
-        if(!confirm('¿Estás SEGURO de querer eliminar este producto? Esto eliminará también los registros de ventas asociados a él de forma permanente.')) {
-            return;
+    showHistory: async function(productId) {
+        try {
+            const res = await fetch(`api/inventory.php?action=transactions&product_id=${productId}&limit=20`);
+            const data = await res.json();
+            const transactions = data.transactions || [];
+            const product = this.products.find(p => p.id === productId);
+
+            const html = `
+                <div class="table-container" style="max-height: 400px; overflow-y: auto;">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Tipo</th>
+                                <th>Cantidad</th>
+                                <th>Antes</th>
+                                <th>Después</th>
+                                <th>Notas</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${transactions.length === 0 ? 
+                                '<tr><td colspan="6" class="text-center text-muted">Sin movimientos</td></tr>' :
+                                transactions.map(t => {
+                                    const typeClass = t.type === 'in' ? 'text-success' : 'text-danger';
+                                    const typeIcon = t.type === 'in' ? '+' : '-';
+                                    return `
+                                        <tr>
+                                            <td>${new Date(t.created_at).toLocaleString()}</td>
+                                            <td class="${typeClass}">${typeIcon}${t.type.toUpperCase()}</td>
+                                            <td>${t.quantity}</td>
+                                            <td>${t.stock_before}</td>
+                                            <td>${t.stock_after}</td>
+                                            <td>${t.notes || '-'}</td>
+                                        </tr>
+                                    `;
+                                }).join('')
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn" onclick="app.closeModal()">Cerrar</button>
+                </div>
+            `;
+            app.showModal(`Historial - ${product?.name || 'Producto'}`, html);
+        } catch (e) {
+            app.showAlert('Error cargando historial', 'error');
         }
+    },
+
+    deleteProduct: async function(productId) {
+        if (!confirm('¿Eliminar este producto? Esta acción no se puede deshacer.')) return;
 
         try {
             const res = await fetch('api/inventory.php?action=delete_product', {
                 method: 'POST',
-                headers:{ 'Content-Type': 'application/json'},
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ product_id: productId })
             });
             const data = await res.json();
-            if(data.success) {
-                app.showAlert('Producto eliminado con éxito');
+            if (data.success) {
+                app.showAlert('Producto eliminado');
                 this.loadProducts();
-            } else throw new Error(data.error);
+            } else {
+                throw new Error(data.error);
+            }
         } catch (e) {
             app.showAlert(e.message, 'error');
         }
     }
 };
 
-// Global hooks for App template Buttons
-app.showAddProductModal = function() {
-    const html = `
-        <form onsubmit="event.preventDefault(); window.Inventory_createProduct()">
-            <div class="form-group">
-                <label class="form-label">Nombre</label>
-                <input type="text" id="addName" class="form-control" required>
-            </div>
-            <div class="form-group">
-                <label class="form-label">Descripción</label>
-                <input type="text" id="addDesc" class="form-control">
-            </div>
-            <div class="form-group">
-                <label class="form-label">Precio</label>
-                <input type="number" id="addPrice" class="form-control" step="0.01" min="0" required>
-            </div>
-            <div class="form-group">
-                <label class="form-label">Stock Inicial</label>
-                <input type="number" id="addStock" class="form-control" min="0" value="0" required>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn" onclick="app.closeModal()">Cancelar</button>
-                <button type="submit" class="btn btn-primary">Crear</button>
-            </div>
-        </form>
-    `;
-    app.showModal('Nuevo Producto', html);
-};
-
-window.Inventory_createProduct = async function() {
-    const payload = {
-        name: document.getElementById('addName').value,
-        description: document.getElementById('addDesc').value,
-        price: parseFloat(document.getElementById('addPrice').value),
-        stock: parseInt(document.getElementById('addStock').value, 10)
-    };
-    try {
-        const res = await fetch('api/inventory.php?action=add_product', {
-            method: 'POST',
-            headers:{ 'Content-Type': 'application/json'},
-            body: JSON.stringify(payload)
-        });
-        const data = await res.json();
-        if(data.success) {
-            app.showAlert('Producto creado');
-            app.closeModal();
-            Inventory.loadProducts();
-        } else throw new Error(data.error);
-    } catch (e) {
-        app.showAlert(e.message, 'error');
-    }
-};
-
-app.showSellModal = function() {
-    if(!Inventory.products || Inventory.products.length === 0) {
-        app.showAlert('No hay productos', 'warning'); return;
-    }
-    const html = `
-        <form onsubmit="event.preventDefault(); window.Inventory_executeSale()">
-            <div class="form-group">
-                <label class="form-label">Seleccionar Producto</label>
-                <select id="sellProd" class="form-control" onchange="window.Inventory_sellProdChange()">
-                    <option value="">-- Seleccionar --</option>
-                    ${Inventory.products.filter(p => p.stock > 0).map(p => `<option value="${p.id}" data-price="${p.price}" data-stock="${p.stock}">${p.name} ($${p.price} | Stock: ${p.stock})</option>`).join('')}
-                </select>
-            </div>
-            <div class="form-group">
-                <label class="form-label">Cantidad</label>
-                <input type="number" id="sellQty" class="form-control" min="1" disabled required oninput="window.Inventory_sellQtyChange()">
-            </div>
-            <div class="form-group">
-                <div class="stat-card" style="padding: 1rem; margin-top: 1rem;">
-                    <div class="stat-title text-center">Total Venta</div>
-                    <div id="sellTotalDisplay" class="stat-value text-success text-center">$0.00</div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn" onclick="app.closeModal()">Cancelar</button>
-                <button type="submit" id="btnSellConfirm" class="btn btn-warning" disabled>Confirmar Venta</button>
-            </div>
-        </form>
-    `;
-    app.showModal('Registrar Venta Directa', html);
-};
-
-window.Inventory_sellProdChange = function() {
-    const sel = document.getElementById('sellProd');
-    const input = document.getElementById('sellQty');
-    if(!sel.value) {
-        input.disabled = true;
-        input.value = '';
-    } else {
-        const opt = sel.selectedOptions[0];
-        input.disabled = false;
-        input.max = opt.dataset.stock;
-        input.value = 1;
-    }
-    window.Inventory_sellQtyChange();
-};
-
-window.Inventory_sellQtyChange = function() {
-    const sel = document.getElementById('sellProd');
-    const input = document.getElementById('sellQty');
-    const btn = document.getElementById('btnSellConfirm');
-    const display = document.getElementById('sellTotalDisplay');
-
-    if(!sel.value || !input.value || parseInt(input.value) <= 0 || parseInt(input.value) > parseInt(sel.selectedOptions[0].dataset.stock)) {
-        btn.disabled = true;
-        display.textContent = '$0.00';
-        return;
-    }
-    
-    btn.disabled = false;
-    const total = parseFloat(sel.selectedOptions[0].dataset.price) * parseInt(input.value);
-    display.textContent = '$' + total.toFixed(2);
-};
-
-window.Inventory_executeSale = async function() {
-    const sel = document.getElementById('sellProd');
-    const qty = parseInt(document.getElementById('sellQty').value, 10);
-    const price = parseFloat(sel.selectedOptions[0].dataset.price);
-    const prodId = parseInt(sel.value, 10);
-
-    const payload = { items: [{ product_id: prodId, quantity: qty, price: price }] };
-
-    try {
-        const res = await fetch('api/inventory.php?action=sell', {
-            method: 'POST',
-            headers:{ 'Content-Type': 'application/json'},
-            body: JSON.stringify(payload)
-        });
-        const data = await res.json();
-        if(data.success) {
-            app.showAlert('Venta registrada con éxito');
-            app.closeModal();
-            Inventory.loadProducts();
-        } else throw new Error(data.error);
-    } catch(e) {
-        app.showAlert(e.message, 'error');
-    }
-};
+window.Inventory = Inventory;

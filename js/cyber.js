@@ -89,7 +89,7 @@ const Cyber = {
         if (!grid) return;
 
         if (this.stations.length === 0) {
-            grid.innerHTML = '<div class="empty-state">No hay estaciones configuradas. Usa el botón "Configurar Estaciones" para agregar.</div>';
+            grid.innerHTML = '<div class="empty-state"><span class="empty-state-icon">🖥️</span><div class="empty-state-title">Sin estaciones</div><div class="empty-state-text">Configura las estaciones de trabajo para comenzar</div><button class="btn btn-primary" onclick="Cyber.showStationModal()">+ Agregar Estación</button></div>';
             return;
         }
 
@@ -167,7 +167,7 @@ const Cyber = {
         
         var self = this;
         if (this.sessions.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No hay sesiones activas en este momento</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6"><div class="empty-state"><span class="empty-state-icon">⏱️</span><div class="empty-state-title">Sin sesiones activas</div><div class="empty-state-text">Las sesiones de internet aparecerán aquí</div></div></td></tr>';
         } else {
             tbody.innerHTML = this.sessions.map(function(s) {
                 var action = s.status === 'paused' ? 
@@ -217,7 +217,7 @@ const Cyber = {
         }
 
         if (filtered.length === 0) {
-            grid.innerHTML = '<div class="empty-state">No hay servicios' + (selectedCategory ? ' en esta categoría' : '') + '</div>';
+            grid.innerHTML = '<div class="empty-state"><span class="empty-state-icon">🖨️</span><div class="empty-state-title">Sin servicios</div><div class="empty-state-text">Los servicios de impresión y otros aparecerán aquí' + (selectedCategory ? ' en esta categoría' : '') + '</div></div>';
             return;
         }
 
@@ -343,7 +343,7 @@ const Cyber = {
         if (!tbody) return;
 
         if (this.history.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No hay registros en este período</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state"><span class="empty-state-icon">📋</span><div class="empty-state-title">Sin historial</div><div class="empty-state-text">El historial de sesiones aparecerá aquí</div></div></td></tr>';
             return;
         }
 
@@ -643,240 +643,6 @@ const Cyber = {
         .then(function(result) {
             if (result.success) {
                 self.loadStations();
-            }
-        })
-        .catch(function(e) {
-            app.showAlert(e.message, 'error');
-        });
-    }
-};
-
-        var action = id ? 'update_station' : 'create_station';
-        if (id) data.id = id;
-
-        fetch('api/cyber.php?action=' + action, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
-        })
-        .then(function(res) { return res.json(); })
-        .then(function(result) {
-            if (result.success) {
-                app.showAlert(result.message);
-                app.closeModal();
-                self.loadStations();
-            } else {
-                throw new Error(result.error);
-            }
-        })
-        .catch(function(e) {
-            app.showAlert(e.message, 'error');
-        });
-    },
-
-    showSessionModal: function() {
-        var self = this;
-        var availableStations = this.stations.filter(function(s) { return s.status === 'available'; });
-        
-        var options = availableStations.map(function(s) {
-            return '<option value="' + s.id + '" data-rate="' + s.hourly_rate + '">' + s.name + ' - $' + s.hourly_rate + '/hr</option>';
-        }).join('');
-
-        var html = '<form onsubmit="event.preventDefault(); Cyber.createSession()">' +
-            '<div class="form-group">' +
-            '<label class="form-label">Estación</label>' +
-            '<select id="ssStation" class="form-control" required>' +
-            '<option value="">-- Seleccionar --</option>' + options +
-            '</select></div>' +
-            '<div class="form-group">' +
-            '<label class="form-label">Nombre del Cliente</label>' +
-            '<input type="text" id="ssCustomer" class="form-control"></div>' +
-            '<div class="form-group">' +
-            '<label class="form-label">Tipo de Sesión</label>' +
-            '<select id="ssType" class="form-control" onchange="Cyber.toggleTimeInput()">' +
-            '<option value="time">Por Tiempo</option>' +
-            '<option value="amount">Por Monto Fijo</option></select></div>' +
-            '<div class="form-group" id="timeGroup">' +
-            '<label class="form-label">Tiempo (minutos)</label>' +
-            '<input type="number" id="ssTime" class="form-control" value="60" min="1"></div>' +
-            '<div class="form-group hidden" id="amountGroup">' +
-            '<label class="form-label">Monto Fijo ($)</label>' +
-            '<input type="number" id="ssAmount" class="form-control" step="0.01" value="10"></div>' +
-            '<div class="form-group">' +
-            '<label class="form-label">Método de Pago</label>' +
-            '<select id="ssPayment" class="form-control">' +
-            '<option value="cash">Efectivo</option>' +
-            '<option value="card">Tarjeta</option>' +
-            '<option value="transfer">Transferencia</option></select></div>' +
-            '<div class="modal-footer">' +
-            '<button type="button" class="btn" onclick="app.closeModal()">Cancelar</button>' +
-            '<button type="submit" class="btn btn-primary">Iniciar Sesión</button></div></form>';
-        app.showModal('Nueva Sesión de Internet', html);
-    },
-
-    toggleTimeInput: function() {
-        var type = document.getElementById('ssType').value;
-        document.getElementById('timeGroup').classList.toggle('hidden', type !== 'time');
-        document.getElementById('amountGroup').classList.toggle('hidden', type !== 'amount');
-    },
-
-    createSession: function() {
-        var self = this;
-        var stationId = parseInt(document.getElementById('ssStation').value);
-        var type = document.getElementById('ssType').value;
-        
-        var data = {
-            station_id: stationId,
-            customer_name: document.getElementById('ssCustomer').value,
-            session_type: type,
-            payment_method: document.getElementById('ssPayment').value
-        };
-
-        if (type === 'time') {
-            data.time_minutes = parseInt(document.getElementById('ssTime').value);
-        } else {
-            data.amount_paid = parseFloat(document.getElementById('ssAmount').value);
-        }
-
-        fetch('api/cyber.php?action=start_session', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
-        })
-        .then(function(res) { return res.json(); })
-        .then(function(result) {
-            if (result.success) {
-                app.showAlert('Sesión iniciada - Total: $' + parseFloat(result.total_cost).toFixed(2));
-                app.closeModal();
-                self.loadStations();
-                self.loadActiveSessions();
-            } else {
-                throw new Error(result.error);
-            }
-        })
-        .catch(function(e) {
-            app.showAlert(e.message, 'error');
-        });
-    },
-
-    startSession: function(stationId) {
-        var self = this;
-        var station = this.stations.find(function(s) { return s.id === stationId; });
-        var customer = prompt('Nombre del cliente:') || 'Cliente';
-        var minutes = parseInt(prompt('Tiempo en minutos:', '60')) || 60;
-        
-        fetch('api/cyber.php?action=start_session', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                station_id: stationId,
-                customer_name: customer,
-                session_type: 'time',
-                time_minutes: minutes,
-                payment_method: 'cash'
-            })
-        })
-        .then(function(res) { return res.json(); })
-        .then(function(result) {
-            if (result.success) {
-                app.showAlert('Sesión iniciada en ' + (station ? station.name : 'estación'));
-                self.loadStations();
-                self.loadActiveSessions();
-            } else {
-                throw new Error(result.error);
-            }
-        })
-        .catch(function(e) {
-            app.showAlert(e.message, 'error');
-        });
-    },
-
-    endSession: function(sessionId) {
-        var self = this;
-        if (!confirm('¿Finalizar esta sesión?')) return;
-        
-        fetch('api/cyber.php?action=end_session', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ session_id: sessionId })
-        })
-        .then(function(res) { return res.json(); })
-        .then(function(result) {
-            if (result.success) {
-                app.showAlert('Sesión finalizada - Tiempo: ' + result.time_used + ' min - Total: $' + parseFloat(result.total_cost).toFixed(2));
-                self.loadStations();
-                self.loadActiveSessions();
-            } else {
-                throw new Error(result.error);
-            }
-        })
-        .catch(function(e) {
-            app.showAlert(e.message, 'error');
-        });
-    },
-
-    endSessionByStation: function(stationId) {
-        var session = this.sessions.find(function(s) { return s.station_id === stationId && s.status === 'active'; });
-        if (session) {
-            this.endSession(session.id);
-        }
-    },
-
-    resumeSession: function(sessionId) {
-        var self = this;
-        fetch('api/cyber.php?action=resume_session', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ session_id: sessionId })
-        })
-        .then(function(res) { return res.json(); })
-        .then(function(result) {
-            if (result.success) {
-                app.showAlert('Sesión reanudada');
-                self.loadActiveSessions();
-            }
-        })
-        .catch(function(e) {
-            app.showAlert(e.message, 'error');
-        });
-    },
-
-    toggleStatus: function(stationId) {
-        var self = this;
-        fetch('api/cyber.php?action=toggle_station_status', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: stationId })
-        })
-        .then(function(res) { return res.json(); })
-        .then(function(result) {
-            if (result.success) {
-                self.loadStations();
-            }
-        })
-        .catch(function(e) {
-            app.showAlert(e.message, 'error');
-        });
-    },
-
-    recordService: function(serviceId, name, price) {
-        var qty = parseInt(prompt('Cantidad para ' + name + ':', '1')) || 1;
-        var customer = prompt('Nombre del cliente:') || '';
-        
-        fetch('api/cyber.php?action=record_service', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                service_id: serviceId,
-                customer_name: customer,
-                quantity: qty,
-                payment_method: 'cash'
-            })
-        })
-        .then(function(res) { return res.json(); })
-        .then(function(result) {
-            if (result.success) {
-                app.showAlert('Servicio registrado - Total: $' + parseFloat(result.total).toFixed(2));
             }
         })
         .catch(function(e) {

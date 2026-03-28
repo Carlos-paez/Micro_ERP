@@ -2,6 +2,7 @@
 const app = {
     user: null,
     currentView: null,
+    sidebarOpen: false,
 
     init: async function() {
         try {
@@ -19,6 +20,7 @@ const app = {
             document.getElementById('userRoleBadge').textContent = this.user.role;
             
             this.setupNavigation();
+            this.setupMobileMenu();
             
             if (this.user.role === 'admin') {
                 this.navigate('dashboard');
@@ -32,6 +34,50 @@ const app = {
             console.error('Init Error:', e);
             window.location.href = 'index.html';
         }
+    },
+
+    setupMobileMenu: function() {
+        const toggle = document.getElementById('mobileMenuToggle');
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('sidebarOverlay');
+        
+        if (!toggle || !sidebar || !overlay) return;
+        
+        toggle.addEventListener('click', function() {
+            app.toggleSidebar();
+        });
+        
+        overlay.addEventListener('click', function() {
+            app.closeSidebar();
+        });
+        
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && app.sidebarOpen) {
+                app.closeSidebar();
+            }
+        });
+    },
+
+    toggleSidebar: function() {
+        this.sidebarOpen = !this.sidebarOpen;
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('sidebarOverlay');
+        
+        if (this.sidebarOpen) {
+            sidebar.classList.add('active');
+            overlay.classList.add('active');
+        } else {
+            this.closeSidebar();
+        }
+    },
+
+    closeSidebar: function() {
+        this.sidebarOpen = false;
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('sidebarOverlay');
+        
+        if (sidebar) sidebar.classList.remove('active');
+        if (overlay) overlay.classList.remove('active');
     },
 
     setupNavigation: function() {
@@ -60,7 +106,7 @@ const app = {
 
         nav.innerHTML = links.map(l => `
             <a class="nav-item" data-target="${l.id}" onclick="app.navigate('${l.id}')">
-                <span style="margin-right: 10px;">${l.icon}</span> ${l.text}
+                <span class="nav-icon">${l.icon}</span> ${l.text}
             </a>
         `).join('');
     },
@@ -75,6 +121,8 @@ const app = {
 
         document.getElementById('contentArea').innerHTML = template.innerHTML;
         this.currentView = viewId;
+        
+        this.closeSidebar();
 
         this.initView(viewId);
     },
@@ -283,6 +331,36 @@ const app = {
         app.showModal('Nuevo Producto', html);
     },
 
+    showAddEquipmentModal: function() {
+        var self = this;
+        var html = '<form onsubmit="event.preventDefault(); window.submitNewEquipment()">' +
+            '<div class="form-group"><label class="form-label">Nombre del Equipo *</label>' +
+            '<input type="text" id="eqName" class="form-control" placeholder="Ej: Proyector Epson" required></div>' +
+            '<div class="form-group"><label class="form-label">Descripción / Modelo</label>' +
+            '<textarea id="eqDesc" class="form-control" placeholder="Número de serie, marca, modelo, características..."></textarea></div>' +
+            '<div style="display:flex;gap:1rem;"><div class="form-group" style="flex:1;"><label class="form-label">Categoría</label>' +
+            '<select id="eqCategory" class="form-control">' +
+            '<option value="">General</option>' +
+            '<option value="proyeccion">Proyección</option>' +
+            '<option value="fotografia">Fotografía</option>' +
+            '<option value="audio">Audio</option>' +
+            '<option value="computo">Cómputo</option>' +
+            '<option value="video">Video</option>' +
+            '<option value="otro">Otro</option></select></div>' +
+            '<div class="form-group" style="flex:1;"><label class="form-label">Ubicación</label>' +
+            '<input type="text" id="eqLocation" class="form-control" placeholder="Ej: Almacén A"></input></div></div>' +
+            '<div class="form-group"><label class="form-label">Número de Serie</label>' +
+            '<input type="text" id="eqSerial" class="form-control" placeholder="Número de serie"></div>' +
+            '<div style="display:flex;gap:1rem;"><div class="form-group" style="flex:1;"><label class="form-label">Fecha de Compra</label>' +
+            '<input type="date" id="eqPurchase" class="form-control"></div>' +
+            '<div class="form-group" style="flex:1;"><label class="form-label">Garantía Hasta</label>' +
+            '<input type="date" id="eqWarranty" class="form-control"></div></div>' +
+            '<div class="modal-footer">' +
+            '<button type="button" class="btn" onclick="app.closeModal()">Cancelar</button>' +
+            '<button type="submit" class="btn btn-primary">Agregar Equipo</button></div></form>';
+        app.showModal('Agregar Equipo', html);
+    },
+
     showSellModal: function() {
         var self = this;
         fetch('api/inventory.php?action=list')
@@ -354,6 +432,34 @@ const app = {
         var div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    },
+
+    setButtonLoading: function(btn, loading) {
+        if (!btn) return;
+        if (loading) {
+            btn.classList.add('loading');
+            btn.disabled = true;
+        } else {
+            btn.classList.remove('loading');
+            btn.disabled = false;
+        }
+    },
+
+    showLoadingOverlay: function(element) {
+        if (!element) return;
+        var overlay = document.createElement('div');
+        overlay.className = 'loading-overlay';
+        overlay.innerHTML = '<div class="spinner"></div>';
+        overlay.style.cssText = 'position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(30,41,59,0.8);display:flex;align-items:center;justify-content:center;z-index:10;';
+        element.style.position = 'relative';
+        element.appendChild(overlay);
+        return overlay;
+    },
+
+    hideLoadingOverlay: function(overlay) {
+        if (overlay && overlay.parentNode) {
+            overlay.parentNode.removeChild(overlay);
+        }
     }
 };
 
@@ -425,6 +531,44 @@ window.executeSale = function() {
             app.showAlert('Venta registrada - Factura: ' + data.invoice);
             app.closeModal();
             if (typeof Inventory !== 'undefined') Inventory.init();
+        } else {
+            throw new Error(data.error || 'Error desconocido');
+        }
+    })
+    .catch(function(e) {
+        app.showAlert(e.message, 'error');
+    });
+};
+
+window.submitNewEquipment = function() {
+    var name = document.getElementById('eqName').value;
+    var description = document.getElementById('eqDesc') ? document.getElementById('eqDesc').value : '';
+    var category = document.getElementById('eqCategory') ? document.getElementById('eqCategory').value : '';
+    var location = document.getElementById('eqLocation') ? document.getElementById('eqLocation').value : '';
+    var serial = document.getElementById('eqSerial') ? document.getElementById('eqSerial').value : '';
+    
+    if (!name) {
+        app.showAlert('El nombre es requerido', 'error');
+        return;
+    }
+    
+    fetch('api/equipment.php?action=add_equipment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            name: name,
+            description: description,
+            category: category,
+            location: location,
+            serial_number: serial
+        })
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+        if (data.success) {
+            app.showAlert('Equipo agregado correctamente');
+            app.closeModal();
+            if (typeof Equipment !== 'undefined') Equipment.loadData();
         } else {
             throw new Error(data.error || 'Error desconocido');
         }

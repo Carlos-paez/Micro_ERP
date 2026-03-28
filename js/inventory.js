@@ -135,7 +135,7 @@ const Inventory = {
         if (!tbody) return;
 
         if (!products || products.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">Sin productos</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state"><span class="empty-state-icon">📦</span><div class="empty-state-title">Sin productos</div><div class="empty-state-text">Agrega productos al inventario para comenzar</div><button class="btn btn-primary" onclick="app.showAddProductModal()">+ Agregar Producto</button></div></td></tr>';
             return;
         }
 

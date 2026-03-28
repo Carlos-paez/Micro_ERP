@@ -92,7 +92,7 @@ const Providers = {
         if (!grid) return;
 
         if (this.suppliers.length === 0) {
-            grid.innerHTML = '<div class="empty-state">No hay proveedores registrados</div>';
+            grid.innerHTML = '<div class="empty-state"><span class="empty-state-icon">🚚</span><div class="empty-state-title">Sin proveedores</div><div class="empty-state-text">Agrega proveedores para gestionar tus pedidos</div><button class="btn btn-primary" onclick="Providers.showSupplierModal()">+ Agregar Proveedor</button></div>';
             return;
         }
 
@@ -138,7 +138,7 @@ const Providers = {
         if (!tbody) return;
 
         if (this.orders.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No hay pedidos</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state"><span class="empty-state-icon">📋</span><div class="empty-state-title">Sin pedidos</div><div class="empty-state-text">Los pedidos a proveedores aparecerán aquí</div></div></td></tr>';
             return;
         }
 
@@ -217,7 +217,7 @@ const Providers = {
 
         var self = this;
         if (this.lowStockProducts.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No hay productos con stock bajo</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5"><div class="empty-state"><span class="empty-state-icon">✅</span><div class="empty-state-title">Inventario saludable</div><div class="empty-state-text">Todos tus productos tienen stock adecuado</div></div></td></tr>';
             return;
         }
 

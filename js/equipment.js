@@ -84,7 +84,7 @@ const Equipment = {
         if (!tbody) return;
 
         if (this.activeLoans.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No hay préstamos activos</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5"><div class="empty-state"><span class="empty-state-icon">📋</span><div class="empty-state-title">Sin préstamos activos</div><div class="empty-state-text">Los préstamos de equipos aparecerán aquí</div></div></td></tr>';
             return;
         }
 
@@ -112,7 +112,7 @@ const Equipment = {
         if (!tbody) return;
 
         if (this.equipments.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No hay equipos registrados</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state"><span class="empty-state-icon">🔧</span><div class="empty-state-title">Sin equipos</div><div class="empty-state-text">Registra equipos para gestionar préstamos</div><button class="btn btn-primary" onclick="app.showAddEquipmentModal()">+ Agregar Equipo</button></div></td></tr>';
             return;
         }
 
@@ -253,67 +253,4 @@ const Equipment = {
     showAddModal: function() {
         app.showAddEquipmentModal();
     }
-};
-
-app.showAddEquipmentModal = function() {
-    var html = '<form onsubmit="event.preventDefault(); Equipment.createEquipment()">' +
-        '<div class="form-group"><label class="form-label">Nombre del Equipo *</label>' +
-        '<input type="text" id="eqName" class="form-control" placeholder="Ej: Proyector Epson" required></div>' +
-        '<div class="form-group"><label class="form-label">Descripción / Modelo</label>' +
-        '<textarea id="eqDesc" class="form-control" placeholder="Número de serie, marca, modelo, características..."></textarea></div>' +
-        '<div style="display:flex;gap:1rem;"><div class="form-group" style="flex:1;"><label class="form-label">Categoría</label>' +
-        '<select id="eqCategory" class="form-control">' +
-        '<option value="">General</option>' +
-        '<option value="proyeccion">Proyección</option>' +
-        '<option value="fotografia">Fotografía</option>' +
-        '<option value="audio">Audio</option>' +
-        '<option value="computo">Cómputo</option>' +
-        '<option value="video">Video</option>' +
-        '<option value="otro">Otro</option></select></div>' +
-        '<div class="form-group" style="flex:1;"><label class="form-label">Ubicación</label>' +
-        '<input type="text" id="eqLocation" class="form-control" placeholder="Ej: Almacén A"></div></div>' +
-        '<div class="form-group"><label class="form-label">Número de Serie</label>' +
-        '<input type="text" id="eqSerial" class="form-control" placeholder="Número de serie"></div>' +
-        '<div style="display:flex;gap:1rem;"><div class="form-group" style="flex:1;"><label class="form-label">Fecha de Compra</label>' +
-        '<input type="date" id="eqPurchase" class="form-control"></div>' +
-        '<div class="form-group" style="flex:1;"><label class="form-label">Garantía Hasta</label>' +
-        '<input type="date" id="eqWarranty" class="form-control"></div></div>' +
-        '<div class="modal-footer">' +
-        '<button type="button" class="btn" onclick="app.closeModal()">Cancelar</button>' +
-        '<button type="submit" class="btn btn-primary">Agregar Equipo</button></div></form>';
-    app.showModal('Agregar Equipo', html);
-};
-
-Equipment.createEquipment = function() {
-    var self = this;
-    var name = document.getElementById('eqName').value;
-    var description = document.getElementById('eqDesc') ? document.getElementById('eqDesc').value : '';
-    var category = document.getElementById('eqCategory') ? document.getElementById('eqCategory').value : '';
-    var location = document.getElementById('eqLocation') ? document.getElementById('eqLocation').value : '';
-    var serial = document.getElementById('eqSerial') ? document.getElementById('eqSerial').value : '';
-
-    fetch('api/equipment.php?action=add_equipment', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            name: name,
-            description: description,
-            category: category,
-            location: location,
-            serial_number: serial
-        })
-    })
-    .then(function(res) { return res.json(); })
-    .then(function(data) {
-        if (data.success) {
-            app.showAlert('Equipo agregado correctamente');
-            app.closeModal();
-            Equipment.loadData();
-        } else {
-            throw new Error(data.error);
-        }
-    })
-    .catch(function(e) {
-        app.showAlert(e.message, 'error');
-    });
 };

@@ -8,9 +8,14 @@
 </head>
 <body>
     <div id="alerts" class="alert-container"></div>
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+    
+    <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Menú">
+        <span>☰</span>
+    </button>
 
     <div class="app-layout hidden" id="appLayout">
-        <aside class="sidebar">
+        <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
                 <div class="sidebar-title">Micro ERP</div>
                 <div class="sidebar-subtitle">Sistema de Gestión</div>
@@ -21,15 +26,17 @@
                     <span id="userRoleBadge" class="badge badge-primary">Admin</span>
                     <strong id="userNameDisplay">Usuario</strong>
                 </div>
-                <button id="logoutBtn" class="btn btn-danger" style="width: 100%; margin-top: 0.5rem;">Cerrar Sesión</button>
+                <button id="logoutBtn" class="btn btn-danger btn-block">Cerrar Sesión</button>
             </div>
         </aside>
 
         <main class="main-content">
             <header class="topbar">
-                <h2 id="topbarTitle">Dashboard</h2>
+                <h2 class="topbar-title" id="topbarTitle">Dashboard</h2>
                 <div class="topbar-actions">
-                    <button class="btn btn-secondary btn-sm" onclick="app.refreshCurrentView()">↻ Actualizar</button>
+                    <button class="btn btn-secondary btn-sm" onclick="app.refreshCurrentView()">
+                        <span>↻</span> <span>Actualizar</span>
+                    </button>
                 </div>
             </header>
             <div class="content-area" id="contentArea"></div>

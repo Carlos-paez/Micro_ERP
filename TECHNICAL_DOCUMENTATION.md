@@ -35,19 +35,29 @@ Micro_ERP/
 │   ├── providers.php           # Gestión de pedidos a proveedores
 │   ├── cyber.php               # Control de cibercafé
 │   ├── reports.php             # Reportes y estadísticas avanzadas
-│   └── categories.php          # Categorías de productos
+│   ├── categories.php          # Categorías de productos
+│   ├── verify.php              # Verificación de credenciales
+│   ├── test_db_conn.php       # Test de conexión a BD
+│   ├── test_query.php         # Prueba de consultas
+│   ├── migrate.php             # Migraciones de esquema
+│   ├── fix_schema.php          # Corrección de esquema
+│   ├── direct_migrate.php     # Migración directa
+│   ├── ensure_columns.php      # Asegurar columnas
+│   ├── fix_schema_direct.php   # Fix de esquema directo
+│   └── check.php               # Verificación del sistema
 ├── css/
 │   └── style.css               # Sistema de diseño global
 ├── js/                         # Lógica del Frontend
 │   ├── app.js                  # Controlador principal SPA
 │   ├── equipment.js            # Gestión de equipamiento
 │   ├── inventory.js            # Inventario y ventas
-│   ├── providers.js            # Gestión de proveedores
+│   ├── provider.js             # Gestión de proveedores
 │   ├── cyber.js                # Control de cibercafé
 │   └── reports.js              # Reportes
 ├── index.html                  # Punto de entrada (Login/Registro)
 ├── app.html                    # Estructura principal SPA
 ├── init.sql                    # Esquema completo de base de datos
+├── test_config.php             # Configuración de pruebas
 ├── README.md                   # Guía de inicio
 └── USER_MANUAL.md              # Manual de usuario
 ```
@@ -61,12 +71,14 @@ Micro_ERP/
 |-------|------|-------------|
 | id | INT AUTO_INCREMENT | Identificador único |
 | username | VARCHAR(50) | Nombre de usuario (único) |
-| email | VARCHAR(100) | Correo electrónico |
-| password_hash | VARCHAR(255) | Contraseña hasheada |
+| email | VARCHAR(100) | Correo electrónico (único) |
+| password_hash | VARCHAR(255) | Contraseña hasheada (bcrypt) |
 | full_name | VARCHAR(100) | Nombre completo |
+| phone | VARCHAR(20) | Teléfono de contacto |
 | role | ENUM('admin','provider','operator') | Rol del usuario |
 | is_active | TINYINT(1) | Estado activo |
 | created_at | TIMESTAMP | Fecha de creación |
+| updated_at | TIMESTAMP | Fecha de última actualización |
 
 #### categories - Categorías de productos
 | Campo | Tipo | Descripción |
@@ -75,6 +87,9 @@ Micro_ERP/
 | name | VARCHAR(100) | Nombre de categoría |
 | description | TEXT | Descripción |
 | parent_id | INT | Categoría padre (subcategorías) |
+| color | VARCHAR(7) | Color hexadecimal para UI |
+| is_active | TINYINT(1) | Estado activo |
+| created_at | TIMESTAMP | Fecha de creación |
 
 #### products - Catálogo de productos
 | Campo | Tipo | Descripción |
@@ -84,14 +99,18 @@ Micro_ERP/
 | name | VARCHAR(100) | Nombre del producto |
 | description | TEXT | Descripción |
 | category_id | INT | FK a categories |
-| price | DECIMAL(10,2) | Precio de venta |
-| cost_price | DECIMAL(10,2) | Costo de adquisición |
+| price | DECIMAL(12,2) | Precio de venta |
+| cost_price | DECIMAL(12,2) | Costo de adquisición |
 | stock | INT | Cantidad en inventario |
 | min_stock | INT | Stock mínimo alerta |
 | max_stock | INT | Stock máximo |
 | unit | VARCHAR(20) | Unidad de medida |
 | barcode | VARCHAR(50) | Código de barras |
+| location | VARCHAR(100) | Ubicación física |
+| image_url | VARCHAR(255) | URL de imagen |
 | is_active | TINYINT(1) | Estado activo |
+| created_at | TIMESTAMP | Fecha de creación |
+| updated_at | TIMESTAMP | Fecha de última actualización |
 
 #### sales - Registro de ventas
 | Campo | Tipo | Descripción |
@@ -110,27 +129,96 @@ Micro_ERP/
 | sale_id | INT | FK a sales |
 | product_id | INT | FK a products |
 | quantity | INT | Cantidad vendida |
-| price | DECIMAL(10,2) | Precio unitario |
+| unit_price | DECIMAL(12,2) | Precio unitario |
+| discount_percent | DECIMAL(5,2) | Descuento por porcentaje |
+| subtotal | DECIMAL(12,2) | Subtotal |
+| created_at | TIMESTAMP | Fecha de creación |
 
-#### providers - Proveedores
+#### inventory_transactions - Transacciones de inventario
 | Campo | Tipo | Descripción |
 |-------|------|-------------|
 | id | INT AUTO_INCREMENT | Identificador único |
-| company_name | VARCHAR(100) | Nombre de empresa |
+| product_id | INT | FK a products |
+| type | ENUM('in','out','adjustment','sale','return') | Tipo de transacción |
+| quantity | INT | Cantidad |
+| stock_before | INT | Stock anterior |
+| stock_after | INT | Stock después |
+| reference_type | VARCHAR(50) | Tipo de referencia |
+| reference_id | INT | ID de referencia |
+| notes | TEXT | Notas |
+| user_id | INT | FK a users |
+| created_at | TIMESTAMP | Fecha de creación |
+
+#### suppliers - Proveedores
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| id | INT AUTO_INCREMENT | Identificador único |
+| name | VARCHAR(150) | Nombre del proveedor |
+| company_name | VARCHAR(200) | Nombre de empresa |
+| rfc_tax_id | VARCHAR(30) | RFC / Tax ID |
 | contact_name | VARCHAR(100) | Contacto |
-| email | VARCHAR(100) | Correo |
+| email | VARCHAR(100) | Correo electrónico |
 | phone | VARCHAR(20) | Teléfono |
+| mobile | VARCHAR(20) | Celular |
 | address | TEXT | Dirección |
+| city | VARCHAR(100) | Ciudad |
+| state | VARCHAR(100) | Estado |
+| country | VARCHAR(50) | País |
+| postal_code | VARCHAR(10) | Código postal |
+| rating | INT | Calificación |
+| payment_terms | VARCHAR(50) | Términos de pago |
+| notes | TEXT | Notas |
 | is_active | TINYINT(1) | Estado activo |
+| created_at | TIMESTAMP | Fecha de creación |
+| updated_at | TIMESTAMP | Fecha de actualización |
+
+#### supplier_products - Productos por proveedor
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| id | INT AUTO_INCREMENT | Identificador único |
+| supplier_id | INT | FK a suppliers |
+| product_id | INT | FK a products |
+| supplier_sku | VARCHAR(50) | SKU del proveedor |
+| supplier_price | DECIMAL(12,2) | Precio del proveedor |
+| min_order_quantity | INT | Cantidad mínima de pedido |
+| lead_time_days | INT | Días de entrega |
+| is_preferred | TINYINT(1) | Proveedor preferido |
+| last_updated | TIMESTAMP | Última actualización |
 
 #### provider_orders - Pedidos a proveedores
 | Campo | Tipo | Descripción |
 |-------|------|-------------|
 | id | INT AUTO_INCREMENT | Identificador único |
-| provider_id | INT | FK a providers |
-| total_amount | DECIMAL(10,2) | Total del pedido |
+| order_number | VARCHAR(50) | Número de pedido (único) |
+| supplier_id | INT | FK a suppliers |
 | status | ENUM | Estado del pedido |
+| order_date | DATE | Fecha de pedido |
+| expected_date | DATE | Fecha esperada |
+| received_date | DATE | Fecha de recepción |
+| subtotal | DECIMAL(12,2) | Subtotal |
+| tax_amount | DECIMAL(12,2) | Monto de impuesto |
+| discount_amount | DECIMAL(12,2) | Descuento |
+| total_amount | DECIMAL(12,2) | Total |
+| payment_status | ENUM | Estado de pago |
+| notes | TEXT | Notas |
+| created_by | INT | FK a users |
+| confirmed_by | INT | FK a users |
+| received_by | INT | FK a users |
 | created_at | TIMESTAMP | Fecha de creación |
+| updated_at | TIMESTAMP | Fecha de actualización |
+
+#### provider_order_items - Ítems del pedido
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| id | INT AUTO_INCREMENT | Identificador único |
+| order_id | INT | FK a provider_orders |
+| product_id | INT | FK a products |
+| quantity_ordered | INT | Cantidad ordenada |
+| quantity_received | INT | Cantidad recibida |
+| unit_price | DECIMAL(12,2) | Precio unitario |
+| discount_percent | DECIMAL(5,2) | Descuento |
+| subtotal | DECIMAL(12,2) | Subtotal |
+| status | ENUM | Estado del ítem |
 
 #### computer_stations - Estaciones de cibercafé
 | Campo | Tipo | Descripción |
@@ -139,8 +227,15 @@ Micro_ERP/
 | name | VARCHAR(50) | Nombre (PC-01, etc.) |
 | hostname | VARCHAR(100) | Hostname |
 | ip_address | VARCHAR(45) | Dirección IP |
-| status | ENUM | Estado (available/occupied/maintenance) |
+| mac_address | VARCHAR(17) | Dirección MAC |
+| location | VARCHAR(100) | Ubicación |
+| specifications | TEXT | Especificaciones |
+| status | ENUM | Estado (available/occupied/maintenance/offline) |
 | hourly_rate | DECIMAL(8,2) | Tarifa por hora |
+| is_active | TINYINT(1) | Estado activo |
+| last_seen | TIMESTAMP | Última conexión |
+| created_at | TIMESTAMP | Fecha de creación |
+| updated_at | TIMESTAMP | Fecha de actualización |
 
 #### cyber_sessions - Sesiones de cibercafé
 | Campo | Tipo | Descripción |
@@ -148,10 +243,47 @@ Micro_ERP/
 | id | INT AUTO_INCREMENT | Identificador único |
 | station_id | INT | FK a computer_stations |
 | customer_name | VARCHAR(100) | Nombre del cliente |
+| customer_document | VARCHAR(20) | Documento del cliente |
+| phone | VARCHAR(20) | Teléfono |
+| session_type | ENUM('time','amount') | Tipo de sesión |
+| time_minutes | INT | Minutos comprados |
+| amount_paid | DECIMAL(10,2) | Monto pagado |
 | start_time | TIMESTAMP | Inicio de sesión |
 | end_time | TIMESTAMP | Fin de sesión |
+| time_used_seconds | INT | Tiempo usado en segundos |
+| cost_per_minute | DECIMAL(8,2) | Costo por minuto |
 | total_cost | DECIMAL(10,2) | Costo total |
-| status | ENUM | Estado (active/paused/completed) |
+| status | ENUM | Estado (active/paused/completed/cancelled) |
+| payment_method | ENUM | Método de pago |
+| notes | TEXT | Notas |
+| closed_by | INT | FK a users |
+| created_at | TIMESTAMP | Fecha de creación |
+
+#### services - Servicios adicionales
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| id | INT AUTO_INCREMENT | Identificador único |
+| name | VARCHAR(100) | Nombre del servicio |
+| description | TEXT | Descripción |
+| category | VARCHAR(50) | Categoría |
+| price | DECIMAL(10,2) | Precio |
+| duration_minutes | INT | Duración en minutos |
+| is_active | TINYINT(1) | Estado activo |
+| created_at | TIMESTAMP | Fecha de creación |
+
+#### service_transactions - Transacciones de servicios
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| id | INT AUTO_INCREMENT | Identificador único |
+| service_id | INT | FK a services |
+| customer_name | VARCHAR(100) | Nombre del cliente |
+| quantity | INT | Cantidad |
+| unit_price | DECIMAL(10,2) | Precio unitario |
+| total_price | DECIMAL(10,2) | Precio total |
+| payment_method | ENUM | Método de pago |
+| notes | TEXT | Notas |
+| user_id | INT | FK a users |
+| created_at | TIMESTAMP | Fecha de creación |
 
 #### equipment - Equipamiento prestable
 | Campo | Tipo | Descripción |
@@ -159,10 +291,15 @@ Micro_ERP/
 | id | INT AUTO_INCREMENT | Identificador único |
 | name | VARCHAR(100) | Nombre del equipo |
 | description | TEXT | Descripción |
-| serial_number | VARCHAR(50) | Número de serie |
-| status | ENUM | Estado (available/in_use/maintenance) |
+| serial_number | VARCHAR(100) | Número de serie |
+| purchase_date | DATE | Fecha de compra |
+| warranty_expiry | DATE | Vencimiento de garantía |
+| status | ENUM | Estado (available/in_use/maintenance/cleaning/retired) |
 | hourly_rate | DECIMAL(8,2) | Tarifa por hora |
 | category | VARCHAR(50) | Categoría |
+| location | VARCHAR(100) | Ubicación |
+| created_at | TIMESTAMP | Fecha de creación |
+| updated_at | TIMESTAMP | Fecha de actualización |
 
 #### equipment_loans - Préstamos de equipo
 | Campo | Tipo | Descripción |
@@ -170,10 +307,32 @@ Micro_ERP/
 | id | INT AUTO_INCREMENT | Identificador único |
 | equipment_id | INT | FK a equipment |
 | customer_name | VARCHAR(100) | Cliente |
+| customer_phone | VARCHAR(20) | Teléfono del cliente |
+| customer_document | VARCHAR(20) | Documento del cliente |
 | start_time | TIMESTAMP | Inicio |
-| end_time | TIMESTAMP | Fin planeado |
+| expected_end_time | TIMESTAMP | Fin planeado |
 | actual_end_time | TIMESTAMP | Fin real |
-| status | ENUM | Estado (active/completed/overdue) |
+| hourly_rate | DECIMAL(8,2) | Tarifa por hora |
+| total_hours | DECIMAL(8,2) | Total de horas |
+| total_amount | DECIMAL(10,2) | Monto total |
+| status | ENUM | Estado (active/completed/overdue/cancelled) |
+| payment_status | ENUM | Estado de pago |
+| notes | TEXT | Notas |
+| created_by | INT | FK a users |
+| closed_by | INT | FK a users |
+| created_at | TIMESTAMP | Fecha de creación |
+
+#### activity_log - Log de actividad
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| id | INT AUTO_INCREMENT | Identificador único |
+| user_id | INT | FK a users |
+| action | VARCHAR(100) | Acción realizada |
+| entity_type | VARCHAR(50) | Tipo de entidad |
+| entity_id | INT | ID de la entidad |
+| details | TEXT | Detalles |
+| ip_address | VARCHAR(45) | Dirección IP |
+| created_at | TIMESTAMP | Fecha de creación |
 
 ## 4. Patrones de Diseño
 
@@ -392,7 +551,47 @@ Verificar con:
 php -m
 ```
 
-## 11. Contributing
+## 11. Índices de Base de Datos
+
+El esquema incluye los siguientes índices para optimizar consultas:
+
+```sql
+-- Índices de productos
+CREATE INDEX idx_products_category ON products(category_id);
+CREATE INDEX idx_products_sku ON products(sku);
+CREATE INDEX idx_products_active ON products(is_active);
+
+-- Índices de inventario
+CREATE INDEX idx_inventory_product ON inventory_transactions(product_id);
+CREATE INDEX idx_inventory_date ON inventory_transactions(created_at);
+
+-- Índices de ventas
+CREATE INDEX idx_sales_date ON sales(created_at);
+CREATE INDEX idx_sales_status ON sales(status);
+
+-- Índices de cibercafé
+CREATE INDEX idx_cyber_station ON cyber_sessions(station_id);
+CREATE INDEX idx_cyber_status ON cyber_sessions(status);
+
+-- Índices de pedidos
+CREATE INDEX idx_provider_orders_supplier ON provider_orders(supplier_id);
+CREATE INDEX idx_provider_orders_status ON provider_orders(status);
+```
+
+## 12. Servicios del Sistema
+
+El módulo de cibercafé incluye servicios adicionales:
+
+| Servicio | Descripción | Precio |
+|----------|-------------|--------|
+| Impresión B/N | Impresión tamaño carta B/N | $1.00 |
+| Impresión Color | Impresión tamaño carta color | $5.00 |
+| Fotocopia B/N | Fotocopia B/N | $1.00 |
+| Escaneo | Escaneo de documentos | $3.00 |
+| Laminado | Laminado tamaño carta | $5.00 |
+| CD/DVD | Grabado de CD/DVD | $15.00 |
+
+## 13. Contributing
 
 Para contribuir al proyecto:
 1. Fork del repositorio
@@ -400,3 +599,7 @@ Para contribuir al proyecto:
 3. Commit de cambios (`git commit -m 'Agrega nueva funcionalidad'`)
 4. Push a la rama (`git push origin feature/nueva-funcionalidad`)
 5. Crear Pull Request
+
+---
+
+**Última actualización**: Marzo 2026

@@ -170,27 +170,34 @@ Para corregir el inventario (entradas, devoluciones, mermas):
 
 ---
 
-## 5. Módulo de Proveedores
+## 5. Módulo de Proveedores (Suppliers)
 
 Gestión de pedidos de reposición de inventario.
 
 ### 5.1 Ver Proveedores
 
 Lista de todos los proveedores dados de alta con:
-- Nombre de empresa
+- Nombre del proveedor
+- Empresa
+- RFC/Tax ID
 - Contacto
-- Teléfono y email
-- Pedidos realizados
+- Teléfono, móvil y email
+- Ciudad y estado
+- Términos de pago
+- Calificación
 
 ### 5.2 Crear Proveedor
 
 1. Haz clic en **"+ Nuevo Proveedor"**
 2. Completa los datos:
+   - Nombre del proveedor
    - Nombre de empresa
+   - RFC/Tax ID
    - Nombre del contacto
    - Email y teléfono
-   - Dirección
-   - RFC/Tax ID
+   - Teléfono móvil
+   - Dirección, ciudad, estado, país
+   - Código postal
    - Términos de pago
 3. Guarda el proveedor
 
@@ -199,29 +206,45 @@ Lista de todos los proveedores dados de alta con:
 1. Haz clic en **"+ Nuevo Pedido"**
 2. Selecciona el proveedor
 3. Agrega productos:
-   - Producto
-   - Cantidad
+   - Producto (selecciona de la lista)
+   - Cantidad ordenada
    - Costo unitario
-4. El sistema calcula el total
-5. Guarda el pedido
+   - Descuento (opcional)
+4. El sistema calcula el subtotal, impuesto y total
+5. Establece la fecha esperada de recepción
+6. Guarda el pedido
 
 ### 5.4 Estados del Pedido
 
 | Estado | Color | Descripción |
 |--------|-------|-------------|
-| Pendiente | Naranja | Esperando envío |
-| Enviado | Azul | En camino |
+| Borrador | Gris | Pedido en edición |
+| Pendiente | Naranja | Esperando envío del proveedor |
+| Enviado | Azul | Proveedor marcó como enviado |
+| Confirmado | Azul oscuro | Pedido confirmado |
 | En Tránsito | Azul claro | En proceso de entrega |
-| Recibido | Verde | Completado y stock actualizado |
+| Recibido | Verde | Mercancía recibida |
+| Parcial | Amarillo | Recepción parcial |
+| Completado | Verde oscuro | Pedido completamente procesado |
 | Cancelado | Rojo | Cancelado por alguna razón |
 
 ### 5.5 Flujo de Pedido
 
-1. **Admin crea pedido** → Estado: Pendiente
-2. **Proveedor lo revisa** → Marca como Enviado
+1. **Admin crea pedido** → Estado: Borrador → Pendiente
+2. **Proveedor lo revisa** → Marca como Enviado/Confirmado
 3. **En tránsito** → Actualiza estado
-4. **Admin recibe** → Marca como Recibido
-5. **Stock se actualiza** → El inventario aumenta
+4. **Admin recibe mercancía** → Marca como Recibido o Parcial
+5. **Stock se actualiza** → El inventario aumenta automáticamente
+6. **Pago** → Actualiza estado de pago (pendiente/parcial/pagado)
+
+### 5.6 Productos por Proveedor
+
+El sistema permite registrar precios especiales por proveedor:
+- SKU del proveedor
+- Precio acordado
+- Cantidad mínima de pedido
+- Días de entrega (lead time)
+- Proveedor preferido
 
 ---
 
@@ -268,6 +291,19 @@ Si el cliente necesita pausa:
    - Tiempo total usado
    - Costo basado en hora/tarifa
 4. Imprime o muestra el total a pagar
+
+### 6.6 Servicios Adicionales
+
+El sistema incluye servicios de cibercafé:
+
+| Servicio | Descripción | Precio |
+|----------|-------------|--------|
+| Impresión B/N | Impresión tamaño carta | $1.00 |
+| Impresión Color | Impresión tamaño carta color | $5.00 |
+| Fotocopia B/N | Fotocopia blanco y negro | $1.00 |
+| Escaneo | Escaneo de documentos | $3.00 |
+| Laminado | Laminado tamaño carta | $5.00 |
+| CD/DVD | Grabado de CD/DVD | $15.00 |
 
 ---
 
@@ -398,5 +434,5 @@ Para cualquier duda o problema:
 2. Contacta al administrador del sistema
 3. Revisa la documentación técnica
 
-**Versión del Sistema**: 1.0
-**Última Actualización**: 2026
+**Versión del Sistema**: 2.0
+**Última Actualización**: Marzo 2026

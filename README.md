@@ -77,6 +77,8 @@ Abrir en el navegador: `http://localhost/Micro_ERP/`
 | Proveedor | proveedor1 | password |
 | Operador | operador1 | password |
 
+> **Nota**: Las contraseñas están hasheadas con bcrypt. La contraseña por defecto para todos los usuarios de prueba es `password`.
+
 ## Estructura del Proyecto
 
 ```
@@ -90,19 +92,23 @@ Micro_ERP/
 │   ├── providers.php      # Gestión de proveedores
 │   ├── reports.php        # Reportes y estadísticas
 │   ├── categories.php     # Categorías de productos
+│   ├── verify.php         # Verificación de credenciales
+│   ├── test_db_conn.php  # Test de conexión BD
+│   ├── migrate.php        # Migraciones de esquema
 │   └── db.php             # Conexión a base de datos
 ├── css/
 │   └── style.css          # Estilos globales
 ├── js/                     # Frontend JavaScript
 │   ├── app.js             # Controlador principal
 │   ├── inventory.js       # Módulo de inventario
-│   ├── providers.js       # Módulo de proveedores
+│   ├── provider.js        # Módulo de proveedores
 │   ├── cyber.js           # Módulo de cibercontrol
 │   ├── equipment.js       # Módulo de equipamiento
 │   └── reports.js         # Módulo de reportes
 ├── index.html             # Login/Registro
 ├── app.html               # Aplicación principal
 ├── init.sql               # Esquema de base de datos
+├── test_config.php       # Configuración de pruebas
 └── README.md              # Este archivo
 ```
 
@@ -147,11 +153,14 @@ Acceso intermedio:
 - `POST api/inventory.php?action=adjust` - Ajustar stock
 
 ### Proveedores
-- `GET api/providers.php?action=list_suppliers` - Listar proveedores
-- `POST api/providers.php?action=create_supplier` - Crear proveedor
-- `GET api/providers.php?action=list_orders` - Listar pedidos
+- `GET api/providers.php?action=list` - Listar proveedores
+- `POST api/providers.php?action=create` - Crear proveedor
+- `POST api/providers.php?action=update` - Actualizar proveedor
+- `POST api/providers.php?action=delete` - Eliminar proveedor
+- `GET api/providers.php?action=orders` - Listar pedidos
 - `POST api/providers.php?action=create_order` - Crear pedido
 - `POST api/providers.php?action=update_order` - Actualizar pedido
+- `POST api/providers.php?action=receive_order` - Recibir pedido
 
 ### Cibercontrol
 - `GET api/cyber.php?action=list_stations` - Listar estaciones
@@ -191,3 +200,7 @@ Para reportar errores o sugerencias, crear un issue en el repositorio.
 ## Autores
 
 - Sistema desarrollado para gestión de microempresas
+
+---
+
+**Última actualización**: Marzo 2026

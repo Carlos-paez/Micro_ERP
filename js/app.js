@@ -107,131 +107,106 @@ const app = {
         }
     },
 
-    loadDashboard: async function() {
-        const formatMoney = (val) => '$' + parseFloat(val || 0).toFixed(2);
+    loadDashboard: function() {
+        var self = this;
+        var formatMoney = function(val) { return '$' + parseFloat(val || 0).toFixed(2); };
         
         // Load main stats from reports API
-        try {
-            const res = await fetch('api/reports.php?action=dashboard');
-            const data = await res.json();
+        fetch('api/reports.php?action=dashboard')
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                if (data.error) {
+                    console.error('Dashboard error:', data.error);
+                    return;
+                }
+                document.getElementById('dashboardStats').innerHTML = 
+                    '<div class="stat-card"><div class="stat-title">Ventas del Día</div><div class="stat-value text-success">' + formatMoney(data.stats.today_sales) + '</div></div>' +
+                    '<div class="stat-card"><div class="stat-title">Ventas del Mes</div><div class="stat-value">' + formatMoney(data.stats.month_sales) + '</div></div>' +
+                    '<div class="stat-card"><div class="stat-title">Cibercafé Hoy</div><div class="stat-value text-primary">' + formatMoney(data.stats.today_cyber) + '</div></div>' +
+                    '<div class="stat-card"><div class="stat-title">Servicios Hoy</div><div class="stat-value text-primary">' + formatMoney(data.stats.today_services) + '</div></div>' +
+                    '<div class="stat-card"><div class="stat-title">Sesiones Activas</div><div class="stat-value text-warning">' + data.stats.active_cyber_sessions + '</div></div>' +
+                    '<div class="stat-card"><div class="stat-title">Productos</div><div class="stat-value">' + data.stats.total_products + '</div></div>' +
+                    '<div class="stat-card"><div class="stat-title">Stock Bajo</div><div class="stat-value ' + (data.stats.low_stock > 0 ? 'text-danger' : 'text-success') + '">' + data.stats.low_stock + '</div></div>' +
+                    '<div class="stat-card"><div class="stat-title">Equipos en Uso</div><div class="stat-value">' + data.stats.equipment_in_use + '</div></div>';
+            })
+            .catch(function(e) {
+                console.error('Dashboard stats error:', e);
+            });
 
-            if (!data.error) {
-                document.getElementById('dashboardStats').innerHTML = `
-                    <div class="stat-card">
-                        <div class="stat-title">Ventas del Día</div>
-                        <div class="stat-value text-success">${formatMoney(data.stats.today_sales)}</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-title">Ventas del Mes</div>
-                        <div class="stat-value">${formatMoney(data.stats.month_sales)}</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-title">Cibercafé Hoy</div>
-                        <div class="stat-value text-primary">${formatMoney(data.stats.today_cyber)}</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-title">Servicios Hoy</div>
-                        <div class="stat-value text-primary">${formatMoney(data.stats.today_services)}</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-title">Sesiones Activas</div>
-                        <div class="stat-value text-warning">${data.stats.active_cyber_sessions}</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-title">Productos</div>
-                        <div class="stat-value">${data.stats.total_products}</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-title">Stock Bajo</div>
-                        <div class="stat-value ${data.stats.low_stock > 0 ? 'text-danger' : 'text-success'}">${data.stats.low_stock}</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-title">Equipos en Uso</div>
-                        <div class="stat-value">${data.stats.equipment_in_use}</div>
-                    </div>
-                `;
-            }
-        } catch (e) {
-            console.error('Dashboard stats error:', e);
-        }
-
-        // Recent sales (admin only)
+        // Recent sales
         fetch('api/dashboard.php?action=stats')
-            .then(r => r.json())
-            .then(d => {
-                const tbody = document.getElementById('recentSalesTable');
+            .then(function(res) { return res.json(); })
+            .then(function(d) {
+                var tbody = document.getElementById('recentSalesTable');
+                if (!tbody) return;
                 if (d.recent_sales && d.recent_sales.length > 0) {
-                    tbody.innerHTML = d.recent_sales.map(s => `
-                        <tr>
-                            <td>#${s.id}</td>
-                            <td class="text-success">${formatMoney(s.total_amount)}</td>
-                            <td class="text-muted">${new Date(s.created_at).toLocaleDateString()}</td>
-                        </tr>
-                    `).join('');
+                    tbody.innerHTML = d.recent_sales.map(function(s) {
+                        return '<tr><td>#' + s.id + '</td><td class="text-success">' + formatMoney(s.total_amount) + '</td><td class="text-muted">' + new Date(s.created_at).toLocaleDateString() + '</td></tr>';
+                    }).join('');
                 } else {
                     tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">Sin ventas</td></tr>';
                 }
-            }).catch(() => {
-                document.getElementById('recentSalesTable').innerHTML = '<tr><td colspan="3" class="text-center text-muted">Sin acceso</td></tr>';
+            })
+            .catch(function() {
+                var tbody = document.getElementById('recentSalesTable');
+                if (tbody) tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">Sin acceso</td></tr>';
             });
 
         // Active sessions
         fetch('api/cyber.php?action=active_sessions')
-            .then(r => r.json())
-            .then(d => {
-                const tbody = document.getElementById('activeSessionsTable');
+            .then(function(res) { return res.json(); })
+            .then(function(d) {
+                var tbody = document.getElementById('activeSessionsTable');
+                if (!tbody) return;
                 if (d.sessions && d.sessions.length > 0) {
-                    tbody.innerHTML = d.sessions.map(s => `
-                        <tr>
-                            <td><strong>${s.station_name}</strong></td>
-                            <td>${s.customer_name || 'Cliente'}</td>
-                            <td>${s.elapsed_formatted || '0:00'}</td>
-                        </tr>
-                    `).join('');
+                    tbody.innerHTML = d.sessions.map(function(s) {
+                        return '<tr><td><strong>' + (s.station_name || 'Estación') + '</strong></td><td>' + (s.customer_name || 'Cliente') + '</td><td>' + (s.elapsed_formatted || '0:00') + '</td></tr>';
+                    }).join('');
                 } else {
                     tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">Sin sesiones activas</td></tr>';
                 }
-            }).catch(() => {
-                document.getElementById('activeSessionsTable').innerHTML = '<tr><td colspan="3" class="text-center text-muted">Sin acceso</td></tr>';
+            })
+            .catch(function() {
+                var tbody = document.getElementById('activeSessionsTable');
+                if (tbody) tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">Sin acceso</td></tr>';
             });
 
         // Low stock
         fetch('api/inventory.php?action=low_stock')
-            .then(r => r.json())
-            .then(d => {
-                const tbody = document.getElementById('lowStockTable');
+            .then(function(res) { return res.json(); })
+            .then(function(d) {
+                var tbody = document.getElementById('lowStockTable');
+                if (!tbody) return;
                 if (d.products && d.products.length > 0) {
-                    tbody.innerHTML = d.products.slice(0, 5).map(p => `
-                        <tr>
-                            <td>${p.name}</td>
-                            <td><span class="badge badge-danger">${p.stock}</span></td>
-                        </tr>
-                    `).join('');
+                    tbody.innerHTML = d.products.slice(0, 5).map(function(p) {
+                        return '<tr><td>' + p.name + '</td><td><span class="badge badge-danger">' + p.stock + '</span></td></tr>';
+                    }).join('');
                 } else {
                     tbody.innerHTML = '<tr><td colspan="2" class="text-center text-muted">Sin stock bajo</td></tr>';
                 }
-            }).catch(() => {
-                document.getElementById('lowStockTable').innerHTML = '<tr><td colspan="2" class="text-center text-muted">Sin acceso</td></tr>';
+            })
+            .catch(function() {
+                var tbody = document.getElementById('lowStockTable');
+                if (tbody) tbody.innerHTML = '<tr><td colspan="2" class="text-center text-muted">Sin acceso</td></tr>';
             });
 
         // Pending orders
         fetch('api/providers.php?action=list_orders&status=pending')
-            .then(r => r.json())
-            .then(d => {
-                const tbody = document.getElementById('pendingOrdersTable');
+            .then(function(res) { return res.json(); })
+            .then(function(d) {
+                var tbody = document.getElementById('pendingOrdersTable');
+                if (!tbody) return;
                 if (d.orders && d.orders.length > 0) {
-                    tbody.innerHTML = d.orders.slice(0, 5).map(o => `
-                        <tr>
-                            <td>#${o.order_number}</td>
-                            <td><span class="badge badge-warning">Pendiente</span></td>
-                            <td class="text-muted">${new Date(o.created_at).toLocaleDateString()}</td>
-                        </tr>
-                    `).join('');
+                    tbody.innerHTML = d.orders.slice(0, 5).map(function(o) {
+                        return '<tr><td>#' + o.order_number + '</td><td><span class="badge badge-warning">Pendiente</span></td><td class="text-muted">' + new Date(o.created_at).toLocaleDateString() + '</td></tr>';
+                    }).join('');
                 } else {
                     tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">Sin pedidos pendientes</td></tr>';
                 }
-            }).catch(() => {
-                document.getElementById('pendingOrdersTable').innerHTML = '<tr><td colspan="3" class="text-center text-muted">Sin acceso</td></tr>';
+            })
+            .catch(function() {
+                var tbody = document.getElementById('pendingOrdersTable');
+                if (tbody) tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">Sin acceso</td></tr>';
             });
     },
 

@@ -736,3 +736,57 @@ body {
     resize: vertical;
     min-height: 60px;
 }
+
+/* Additional utilities */
+.text-primary { color: var(--primary-color); }
+
+/* Empty state */
+.empty-state {
+    padding: 2rem;
+    text-align: center;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+/* Station status badges */
+.status-badge {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.status-available { background-color: rgba(16, 185, 129, 0.2); color: var(--success-color); }
+.status-occupied { background-color: rgba(245, 158, 11, 0.2); color: var(--warning-color); }
+.status-maintenance { background-color: rgba(239, 68, 68, 0.2); color: var(--danger-color); }
+.status-offline { background-color: rgba(100, 116, 139, 0.2); color: var(--text-muted); }
+
+/* Station info styles */
+.station-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.station-header h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0;
+}
+
+.station-info {
+    text-align: left;
+    margin-bottom: 0.75rem;
+}
+
+.station-info p {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.25rem;
+}
+
+.station-actions {
+    margin-top: 0.5rem;
+}

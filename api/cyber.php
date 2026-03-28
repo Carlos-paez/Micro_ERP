@@ -3,12 +3,16 @@
 session_start();
 require_once 'db.php';
 
+if (session_status() !== PHP_SESSION_ACTIVE) {
+    session_start();
+}
+
 function isAdmin() {
-    return isset($_SESSION['user_id']) && $_SESSION['role'] === 'admin';
+    return isset($_SESSION['user_id']) && isset($_SESSION['role']) && $_SESSION['role'] === 'admin';
 }
 
 function isOperator() {
-    return isset($_SESSION['user_id']) && in_array($_SESSION['role'], ['admin', 'operator']);
+    return isset($_SESSION['user_id']) && isset($_SESSION['role']) && in_array($_SESSION['role'], ['admin', 'operator']);
 }
 
 function isAuthenticated() {

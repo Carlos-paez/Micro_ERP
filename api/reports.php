@@ -3,19 +3,16 @@
 session_start();
 require_once 'db.php';
 
+if (session_status() !== PHP_SESSION_ACTIVE) {
+    session_start();
+}
+
 function isAdmin() {
-    return isset($_SESSION['user_id']) && $_SESSION['role'] === 'admin';
+    return isset($_SESSION['user_id']) && isset($_SESSION['role']) && $_SESSION['role'] === 'admin';
 }
 
 function isAuthenticated() {
     return isset($_SESSION['user_id']);
-}
-
-function sendJSON($data, $code = 200) {
-    http_response_code($code);
-    header('Content-Type: application/json');
-    echo json_encode($data);
-    exit;
 }
 
 $action = $_GET['action'] ?? '';
@@ -66,7 +63,7 @@ switch($action) {
             $stmt = $pdo->query("SELECT COALESCE(SUM(price * stock), 0) - COALESCE(SUM(cost_price * stock), 0) as total FROM products WHERE is_active = 1 AND stock > 0");
             $stats['potential_profit'] = $stmt->fetch()['total'];
             
-            $stmt = $pdo->query("SELECT COUNT(*) as total FROM provider_orders WHERE status IN ('pending', 'sent', 'confirmed', 'in_transit')");
+            $stmt = $pdo->query("SELECT COUNT(*) as total FROM provider_orders WHERE status IN ('pending', 'confirmed', 'in_transit', 'received')");
             $stats['pending_orders'] = $stmt->fetch()['total'];
             
             sendJSON(['stats' => $stats]);

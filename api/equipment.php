@@ -3,8 +3,12 @@
 session_start();
 require_once 'db.php';
 
+if (session_status() !== PHP_SESSION_ACTIVE) {
+    session_start();
+}
+
 function isAdmin() {
-    return isset($_SESSION['user_id']) && $_SESSION['role'] === 'admin';
+    return isset($_SESSION['user_id']) && isset($_SESSION['role']) && $_SESSION['role'] === 'admin';
 }
 
 function isAuthenticated() {
@@ -24,28 +28,35 @@ function sendJSON($data, $code = 200) {
 
 $action = $_GET['action'] ?? '';
 
-if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-    if ($action === 'list') {
+switch($action) {
+    case 'list':
         if (!isAuthenticated()) sendJSON(['error' => 'Unauthorized'], 403);
-        $stmt = $pdo->query('SELECT * FROM equipment ORDER BY name ASC');
-        sendJSON(['equipment' => $stmt->fetchAll()]);
-    } elseif ($action === 'active_loans') {
+        try {
+            $stmt = $pdo->query('SELECT * FROM equipment ORDER BY name ASC');
+            sendJSON(['equipment' => $stmt->fetchAll()]);
+        } catch (PDOException $e) {
+            sendJSON(['error' => $e->getMessage()], 500);
+        }
+        break;
+        
+    case 'active_loans':
         if (!isAuthenticated()) sendJSON(['error' => 'Unauthorized'], 403);
-        $stmt = $pdo->query('
-            SELECT el.*, e.name as equipment_name 
-            FROM equipment_loans el
-            JOIN equipment e ON el.equipment_id = e.id
-            WHERE el.status = \'active\'
-            ORDER BY el.start_time ASC
-        ');
-        sendJSON(['loans' => $stmt->fetchAll()]);
-    }
-}
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $input = getJSONInput();
-
-    if ($action === 'start_loan') {
+        try {
+            $stmt = $pdo->query('
+                SELECT el.*, e.name as equipment_name 
+                FROM equipment_loans el
+                JOIN equipment e ON el.equipment_id = e.id
+                WHERE el.status = \'active\'
+                ORDER BY el.start_time ASC
+            ');
+            sendJSON(['loans' => $stmt->fetchAll()]);
+        } catch (PDOException $e) {
+            sendJSON(['error' => $e->getMessage()], 500);
+        }
+        break;
+        
+    case 'start_loan':
+        $input = getJSONInput();
         $equipmentId = $input['equipment_id'] ?? 0;
         $customerName = $input['customer_name'] ?? '';
 
@@ -74,17 +85,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmtEq->execute([$equipmentId]);
 
             $pdo->commit();
-            sendJSON(['success' => true]);
+            sendJSON(['success' => true, 'message' => 'Préstamo registrado']);
 
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $pdo->rollBack();
             sendJSON(['error' => 'Error al iniciar préstamo: ' . $e->getMessage()], 500);
         }
-    } elseif ($action === 'return_equipment') {
+        break;
+        
+    case 'return_equipment':
+        $input = getJSONInput();
         $loanId = $input['loan_id'] ?? 0;
 
         if ($loanId <= 0) {
-             sendJSON(['error' => 'ID de préstamo inválido'], 400);
+            sendJSON(['error' => 'ID de préstamo inválido'], 400);
         }
 
         $pdo->beginTransaction();
@@ -105,14 +119,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmtUpdateEq->execute([$loan['equipment_id']]);
 
             $pdo->commit();
-            sendJSON(['success' => true]);
-        } catch (\Exception $e) {
+            sendJSON(['success' => true, 'message' => 'Equipo devuelto correctamente']);
+        } catch (Exception $e) {
             $pdo->rollBack();
-             sendJSON(['error' => 'Error al devolver equipo: ' . $e->getMessage()], 500);
+            sendJSON(['error' => 'Error al devolver equipo: ' . $e->getMessage()], 500);
         }
-    } elseif ($action === 'add_equipment') {
+        break;
+        
+    case 'add_equipment':
         if (!isAdmin()) sendJSON(['error' => 'Unauthorized'], 403);
         
+        $input = getJSONInput();
         $name = $input['name'] ?? '';
         $description = $input['description'] ?? '';
 
@@ -123,13 +140,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             $stmt = $pdo->prepare('INSERT INTO equipment (name, description, status) VALUES (?, ?, \'available\')');
             $stmt->execute([$name, $description]);
-            sendJSON(['success' => true, 'id' => $pdo->lastInsertId()]);
-        } catch (\Exception $e) {
+            sendJSON(['success' => true, 'id' => $pdo->lastInsertId(), 'message' => 'Equipo agregado']);
+        } catch (Exception $e) {
             sendJSON(['error' => 'Error al agregar equipo: ' . $e->getMessage()], 500);
         }
-    } elseif ($action === 'toggle_status') {
+        break;
+        
+    case 'toggle_status':
         if (!isAdmin()) sendJSON(['error' => 'Unauthorized'], 403);
         
+        $input = getJSONInput();
         $equipmentId = $input['equipment_id'] ?? 0;
         $newStatus = $input['status'] ?? '';
 
@@ -148,12 +168,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $stmtUpdate = $pdo->prepare('UPDATE equipment SET status = ? WHERE id = ?');
             $stmtUpdate->execute([$newStatus, $equipmentId]);
-            sendJSON(['success' => true]);
-        } catch (\Exception $e) {
+            sendJSON(['success' => true, 'message' => 'Estado actualizado']);
+        } catch (Exception $e) {
             sendJSON(['error' => 'Error al actualizar estado: ' . $e->getMessage()], 500);
         }
-    }
+        break;
+        
+    default:
+        sendJSON(['error' => 'Acción no válida'], 400);
 }
-
-sendJSON(['error' => 'Acción inválida'], 400);
 ?>

@@ -1,215 +1,237 @@
-// js/equipment.js
+// js/equipment.js - Equipment Module
 const Equipment = {
-    activeLoans: [],
     equipments: [],
+    activeLoans: [],
 
-    init: async function() {
-        await this.loadData();
+    init: function() {
+        this.loadData();
     },
 
-    loadData: async function() {
-        try {
-            const [resEq, resLoans] = await Promise.all([
-                fetch('api/equipment.php?action=list').then(r => r.json()),
-                fetch('api/equipment.php?action=active_loans').then(r => r.json())
-            ]);
-
-            this.equipments = resEq.equipment || [];
-            this.activeLoans = resLoans.loans || [];
-            this.render();
-        } catch (e) {
+    loadData: function() {
+        var self = this;
+        
+        Promise.all([
+            fetch('api/equipment.php?action=list').then(function(res) { return res.json(); }),
+            fetch('api/equipment.php?action=active_loans').then(function(res) { return res.json(); })
+        ])
+        .then(function(results) {
+            var dataEq = results[0];
+            var dataLoans = results[1];
+            
+            if (dataEq.error) {
+                console.error('Error equipment:', dataEq.error);
+                app.showAlert('Error cargando equipamiento', 'error');
+            } else {
+                self.equipments = dataEq.equipment || [];
+            }
+            
+            if (dataLoans.error) {
+                console.error('Error loans:', dataLoans.error);
+            } else {
+                self.activeLoans = dataLoans.loans || [];
+            }
+            
+            self.render();
+        })
+        .catch(function(e) {
             console.error('Error loading equipment:', e);
-            const eqTable = document.getElementById('equipmentTable');
-            if (eqTable) eqTable.innerHTML = '<tr><td colspan="4" class="text-center text-muted">Error cargando equipos</td></tr>';
-            const loanTable = document.getElementById('activeLoansTable');
-            if (loanTable) loanTable.innerHTML = '<tr><td colspan="4" class="text-center text-muted">Sin acceso</td></tr>';
-        }
+            app.showAlert('Error de conexión', 'error');
+        });
     },
 
     render: function() {
-        // Render Equipment List
-        const eqTable = document.getElementById('equipmentTable');
-        if(eqTable) {
-            eqTable.innerHTML = this.equipments.map(e => `
-                <tr>
-                    <td>${e.id}</td>
-                    <td><strong>${e.name}</strong><br><small class="text-muted">${e.description || '-'}</small></td>
-                    <td><span class="badge ${this.getStatusClass(e.status)}">${this.getStatusText(e.status)}</span></td>
-                    <td>
-                        ${e.status === 'available' ? 
-                            `<button class="btn btn-warning btn-sm" onclick="Equipment.toggleStatus(${e.id}, 'maintenance')">Mantenimiento</button>` : 
-                          e.status === 'maintenance' ?
-                            `<button class="btn btn-success btn-sm" onclick="Equipment.toggleStatus(${e.id}, 'available')">Hacer Disponible</button>` :
-                            '-'
-                        }
-                    </td>
-                </tr>
-            `).join('');
-        }
-
-        // Render Active Loans
-        const loanTable = document.getElementById('activeLoansTable');
-        if(loanTable) {
-            loanTable.innerHTML = this.activeLoans.map(l => `
-                <tr>
-                    <td>${l.equipment_name}</td>
-                    <td>${l.customer_name}</td>
-                    <td>${l.start_time}</td>
-                    <td>
-                        <button class="btn btn-danger btn-sm" onclick="Equipment.returnEquipment(${l.id})">Devolver</button>
-                    </td>
-                </tr>
-            `).join('');
-        }
-
-        // Expose to global for modals
-        window._availableEquipments = this.equipments.filter(e => e.status === 'available');
+        this.renderLoans();
+        this.renderEquipment();
     },
 
-    getStatusClass: function(status) {
-        switch(status) {
-            case 'available': return 'badge-success';
-            case 'in_use': return 'badge-danger';
-            case 'maintenance': return 'badge-warning';
-            default: return 'badge-secondary';
+    renderLoans: function() {
+        var tbody = document.getElementById('activeLoansTable');
+        if (!tbody) return;
+
+        if (this.activeLoans.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No hay préstamos activos</td></tr>';
+            return;
         }
+
+        var self = this;
+        tbody.innerHTML = this.activeLoans.map(function(l) {
+            return '<tr>' +
+                '<td><strong>' + (l.equipment_name || 'N/A') + '</strong></td>' +
+                '<td>' + (l.customer_name || 'N/A') + '</td>' +
+                '<td>' + new Date(l.start_time).toLocaleString() + '</td>' +
+                '<td><button class="btn btn-success btn-sm" onclick="Equipment.returnLoan(' + l.id + ')">Devolver</button></td></tr>';
+        }).join('');
     },
 
-    getStatusText: function(status) {
-        switch(status) {
-            case 'available': return 'Disponible';
-            case 'in_use': return 'En Uso';
-            case 'maintenance': return 'Mantenimiento';
-            default: return status;
+    renderEquipment: function() {
+        var tbody = document.getElementById('equipmentTable');
+        if (!tbody) return;
+
+        if (this.equipments.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No hay equipos registrados</td></tr>';
+            return;
         }
+
+        var self = this;
+        tbody.innerHTML = this.equipments.map(function(e, index) {
+            var statusClass = e.status === 'available' ? 'badge-success' : 
+                             e.status === 'in_use' ? 'badge-warning' : 
+                             e.status === 'maintenance' ? 'badge-danger' : 'badge-secondary';
+            var statusText = e.status === 'available' ? 'Disponible' : 
+                            e.status === 'in_use' ? 'En uso' : 
+                            e.status === 'maintenance' ? 'Mantenimiento' : 
+                            e.status === 'cleaning' ? 'Limpieza' : e.status;
+            
+            var actions = '';
+            if (e.status === 'available') {
+                actions = '<button class="btn btn-primary btn-sm" onclick="Equipment.showLoanModal(' + e.id + ')">Prestar</button>';
+            } else if (e.status === 'in_use') {
+                actions = '<span class="badge badge-warning">En préstamo</span>';
+            } else {
+                actions = '<button class="btn btn-secondary btn-sm" onclick="Equipment.toggleStatus(' + e.id + ', \'available\')">Activar</button>';
+            }
+            
+            return '<tr>' +
+                '<td>' + (index + 1) + '</td>' +
+                '<td><strong>' + e.name + '</strong><br><small class="text-muted">' + (e.description || '') + '</small></td>' +
+                '<td><span class="badge ' + statusClass + '">' + statusText + '</span></td>' +
+                '<td>' + actions + '</td></tr>';
+        }).join('');
     },
 
-    returnEquipment: async function(loanId) {
-        if(!confirm('¿Confirmar devolución de equipo?')) return;
-        try {
-            const res = await fetch('api/equipment.php?action=return_equipment', {
-                method: 'POST',
-                headers:{ 'Content-Type': 'application/json'},
-                body: JSON.stringify({ loan_id: loanId })
-            });
-            const data = await res.json();
-            if(data.success) {
+    showLoanModal: function(equipmentId) {
+        var html = '<form onsubmit="event.preventDefault(); Equipment.startLoan(' + equipmentId + ')">' +
+            '<div class="form-group">' +
+            '<label class="form-label">Nombre del Cliente</label>' +
+            '<input type="text" id="loanCustomer" class="form-control" placeholder="Nombre completo" required>' +
+            '</div>' +
+            '<div class="modal-footer">' +
+            '<button type="button" class="btn" onclick="app.closeModal()">Cancelar</button>' +
+            '<button type="submit" class="btn btn-primary">Iniciar Préstamo</button>' +
+            '</div></form>';
+        app.showModal('Registrar Préstamo', html);
+    },
+
+    startLoan: function(equipmentId) {
+        var self = this;
+        var customerName = document.getElementById('loanCustomer').value;
+
+        fetch('api/equipment.php?action=start_loan', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                equipment_id: equipmentId,
+                customer_name: customerName
+            })
+        })
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+            if (data.success) {
+                app.showAlert('Préstamo iniciado');
+                app.closeModal();
+                self.loadData();
+            } else {
+                throw new Error(data.error);
+            }
+        })
+        .catch(function(e) {
+            app.showAlert(e.message, 'error');
+        });
+    },
+
+    returnLoan: function(loanId) {
+        var self = this;
+        if (!confirm('¿Confirmar devolución del equipo?')) return;
+
+        fetch('api/equipment.php?action=return_equipment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ loan_id: loanId })
+        })
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+            if (data.success) {
                 app.showAlert('Equipo devuelto correctamente');
-                this.loadData();
-            } else throw new Error(data.error);
-        } catch(e) {
+                self.loadData();
+            } else {
+                throw new Error(data.error);
+            }
+        })
+        .catch(function(e) {
             app.showAlert(e.message, 'error');
-        }
+        });
     },
 
-    toggleStatus: async function(equipmentId, newStatus) {
-        try {
-            const res = await fetch('api/equipment.php?action=toggle_status', {
-                method: 'POST',
-                headers:{ 'Content-Type': 'application/json'},
-                body: JSON.stringify({ equipment_id: equipmentId, status: newStatus })
-            });
-            const data = await res.json();
-            if(data.success) {
-                app.showAlert('Estado actualizado correctamente');
-                this.loadData();
-            } else throw new Error(data.error);
-        } catch(e) {
+    toggleStatus: function(equipmentId, status) {
+        var self = this;
+        fetch('api/equipment.php?action=toggle_status', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                equipment_id: equipmentId,
+                status: status
+            })
+        })
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+            if (data.success) {
+                app.showAlert('Estado actualizado');
+                self.loadData();
+            } else {
+                throw new Error(data.error);
+            }
+        })
+        .catch(function(e) {
             app.showAlert(e.message, 'error');
-        }
+        });
+    },
+
+    showAddModal: function() {
+        app.showAddEquipmentModal();
     }
 };
 
 app.showAddEquipmentModal = function() {
-    const html = `
-        <form onsubmit="event.preventDefault(); window.Equipment_create()">
-            <div class="form-group">
-                <label class="form-label">Nombre del Equipo</label>
-                <input type="text" id="eqName" class="form-control" placeholder="Ej: Laptop Dell" required>
-            </div>
-            <div class="form-group">
-                <label class="form-label">Descripción</label>
-                <input type="text" id="eqDesc" class="form-control" placeholder="Número de serie, modelo, etc.">
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn" onclick="app.closeModal()">Cancelar</button>
-                <button type="submit" class="btn btn-primary">Guardar Equipo</button>
-            </div>
-        </form>
-    `;
-    app.showModal('Agregar Nuevo Equipo', html);
+    var html = '<form onsubmit="event.preventDefault(); Equipment.createEquipment()">' +
+        '<div class="form-group">' +
+        '<label class="form-label">Nombre del Equipo</label>' +
+        '<input type="text" id="eqName" class="form-control" placeholder="Ej: Laptop Dell" required>' +
+        '</div>' +
+        '<div class="form-group">' +
+        '<label class="form-label">Descripción</label>' +
+        '<textarea id="eqDesc" class="form-control" placeholder="Número de serie, modelo, etc."></textarea>' +
+        '</div>' +
+        '<div class="modal-footer">' +
+        '<button type="button" class="btn" onclick="app.closeModal()">Cancelar</button>' +
+        '<button type="submit" class="btn btn-primary">Agregar</button>' +
+        '</div></form>';
+    app.showModal('Agregar Equipo', html);
 };
 
-window.Equipment_create = async function() {
-    const payload = {
-        name: document.getElementById('eqName').value,
-        description: document.getElementById('eqDesc').value
-    };
+Equipment.createEquipment = function() {
+    var self = this;
+    var name = document.getElementById('eqName').value;
+    var description = document.getElementById('eqDesc').value;
 
-    try {
-        const res = await fetch('api/equipment.php?action=add_equipment', {
-            method: 'POST',
-            headers:{ 'Content-Type': 'application/json'},
-            body: JSON.stringify(payload)
-        });
-        const data = await res.json();
-        if(data.success) {
-            app.showAlert('Equipo registrado con éxito');
+    fetch('api/equipment.php?action=add_equipment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            name: name,
+            description: description
+        })
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+        if (data.success) {
+            app.showAlert('Equipo agregado');
             app.closeModal();
             Equipment.loadData();
-        } else throw new Error(data.error);
-    } catch(e) {
+        } else {
+            throw new Error(data.error);
+        }
+    })
+    .catch(function(e) {
         app.showAlert(e.message, 'error');
-    }
-};
-
-app.showLoanModal = function() {
-    const available = window._availableEquipments || [];
-    if(available.length === 0) {
-        app.showAlert('No hay equipos disponibles para préstamo', 'warning');
-        return;
-    }
-
-    const html = `
-        <form onsubmit="event.preventDefault(); window.Equipment_startLoan()">
-            <div class="form-group">
-                <label class="form-label">Seleccionar Equipo</label>
-                <select id="loanEqId" class="form-control" required>
-                    ${available.map(e => `<option value="${e.id}">${e.name}</option>`).join('')}
-                </select>
-            </div>
-            <div class="form-group">
-                <label class="form-label">Nombre del Cliente / Empleado</label>
-                <input type="text" id="loanCustomer" class="form-control" placeholder="Quién recibe el equipo" required>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn" onclick="app.closeModal()">Cancelar</button>
-                <button type="submit" class="btn btn-primary">Registrar Préstamo</button>
-            </div>
-        </form>
-    `;
-    app.showModal('Nuevo Préstamo de Equipo', html);
-};
-
-window.Equipment_startLoan = async function() {
-    const payload = {
-        equipment_id: document.getElementById('loanEqId').value,
-        customer_name: document.getElementById('loanCustomer').value
-    };
-
-    try {
-        const res = await fetch('api/equipment.php?action=start_loan', {
-            method: 'POST',
-            headers:{ 'Content-Type': 'application/json'},
-            body: JSON.stringify(payload)
-        });
-        const data = await res.json();
-        if(data.success) {
-            app.showAlert('Préstamo registrado con éxito');
-            app.closeModal();
-            Equipment.loadData();
-        } else throw new Error(data.error);
-    } catch(e) {
-        app.showAlert(e.message, 'error');
-    }
+    });
 };

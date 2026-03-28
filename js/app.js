@@ -245,104 +245,193 @@ const app = {
     },
 
     showAddProductModal: function() {
-        const html = `
-            <form onsubmit="event.preventDefault(); window.createProduct()">
-                <div class="form-group">
-                    <label class="form-label">Nombre *</label>
-                    <input type="text" id="addName" class="form-control" required>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Precio</label>
-                    <input type="number" id="addPrice" class="form-control" step="0.01" min="0" required>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Stock Inicial</label>
-                    <input type="number" id="addStock" class="form-control" min="0" value="0">
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn" onclick="app.closeModal()">Cancelar</button>
-                    <button type="submit" class="btn btn-primary">Crear</button>
-                </div>
-            </form>
-        `;
+        var self = this;
+        var categoryOptions = Inventory.categories.map(function(c) {
+            return '<option value="' + c.id + '">' + self.escapeHtml(c.name) + '</option>';
+        }).join('');
+        
+        var html = '<form onsubmit="event.preventDefault(); window.createProduct()">' +
+            '<div class="form-group"><label class="form-label">Nombre del Producto *</label>' +
+            '<input type="text" id="addName" class="form-control" placeholder="Ej: Laptop Dell XPS 15" required></div>' +
+            '<div class="form-group"><label class="form-label">Descripción</label>' +
+            '<textarea id="addDesc" class="form-control" placeholder="Descripción detallada del producto"></textarea></div>' +
+            '<div class="form-group"><label class="form-label">Categoría</label>' +
+            '<select id="addCategory" class="form-control">' +
+            '<option value="">Sin categoría</option>' + categoryOptions + '</select></div>' +
+            '<div style="display:flex;gap:1rem;"><div class="form-group" style="flex:1;"><label class="form-label">Precio de Venta *</label>' +
+            '<input type="number" id="addPrice" class="form-control" step="0.01" min="0" placeholder="0.00" required></div>' +
+            '<div class="form-group" style="flex:1;"><label class="form-label">Precio de Costo</label>' +
+            '<input type="number" id="addCost" class="form-control" step="0.01" min="0" placeholder="0.00"></div></div>' +
+            '<div style="display:flex;gap:1rem;"><div class="form-group" style="flex:1;"><label class="form-label">Stock Inicial</label>' +
+            '<input type="number" id="addStock" class="form-control" min="0" value="0"></div>' +
+            '<div class="form-group" style="flex:1;"><label class="form-label">Stock Mínimo</label>' +
+            '<input type="number" id="addMinStock" class="form-control" min="0" value="5"></div>' +
+            '<div class="form-group" style="flex:1;"><label class="form-label">Stock Máximo</label>' +
+            '<input type="number" id="addMaxStock" class="form-control" min="0" value="100"></div></div>' +
+            '<div style="display:flex;gap:1rem;"><div class="form-group" style="flex:1;"><label class="form-label">Unidad</label>' +
+            '<select id="addUnit" class="form-control"><option value="unidad">Unidad</option>' +
+            '<option value="pieza">Pieza</option><option value="kg">Kilogramo</option>' +
+            '<option value="litro">Litro</option><option value="metro">Metro</option>' +
+            '<option value="caja">Caja</option><option value="paquete">Paquete</option></select></div>' +
+            '<div class="form-group" style="flex:1;"><label class="form-label">Código de Barras</label>' +
+            '<input type="text" id="addBarcode" class="form-control" placeholder="Código de barras"></div></div>' +
+            '<div class="form-group"><label class="form-label">Ubicación/Almacén</label>' +
+            '<input type="text" id="addLocation" class="form-control" placeholder="Ej: Estante A-3"></div>' +
+            '<div class="modal-footer">' +
+            '<button type="button" class="btn" onclick="app.closeModal()">Cancelar</button>' +
+            '<button type="submit" class="btn btn-primary">Crear Producto</button></div></form>';
         app.showModal('Nuevo Producto', html);
     },
 
     showSellModal: function() {
+        var self = this;
         fetch('api/inventory.php?action=list')
-            .then(r => r.json())
-            .then(d => {
-                const products = d.products || [];
-                const available = products.filter(p => p.stock > 0);
+            .then(function(res) { return res.json(); })
+            .then(function(d) {
+                var products = d.products || [];
+                var available = products.filter(function(p) { return p.stock > 0; });
                 
-                const html = `
-                    <form onsubmit="event.preventDefault(); window.executeSale()">
-                        <div class="form-group">
-                            <label class="form-label">Producto</label>
-                            <select id="sellProd" class="form-control" required>
-                                <option value="">-- Seleccionar --</option>
-                                ${available.map(p => `<option value="${p.id}" data-price="${p.price}">${p.name} ($${p.price})</option>`).join('')}
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Cantidad</label>
-                            <input type="number" id="sellQty" class="form-control" min="1" value="1" required>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn" onclick="app.closeModal()">Cancelar</button>
-                            <button type="submit" class="btn btn-warning">Vender</button>
-                        </div>
-                    </form>
-                `;
+                var options = available.map(function(p) {
+                    return '<option value="' + p.id + '" data-price="' + p.price + '" data-stock="' + p.stock + '">' + 
+                           self.escapeHtml(p.name) + ' ($' + parseFloat(p.price).toFixed(2) + ') - Stock: ' + p.stock + '</option>';
+                }).join('');
+                
+                var html = '<form onsubmit="event.preventDefault(); window.executeSale()">' +
+                    '<div class="form-group"><label class="form-label">Producto *</label>' +
+                    '<select id="sellProd" class="form-control" required onchange="app.updateSaleTotal()">' +
+                    '<option value="">-- Seleccionar producto --</option>' + options + '</select></div>' +
+                    '<div style="display:flex;gap:1rem;"><div class="form-group" style="flex:1;"><label class="form-label">Cantidad *</label>' +
+                    '<input type="number" id="sellQty" class="form-control" min="1" value="1" required onchange="app.updateSaleTotal()"></div>' +
+                    '<div class="form-group" style="flex:1;"><label class="form-label">Precio Unitario</label>' +
+                    '<input type="number" id="sellPrice" class="form-control" step="0.01" readonly></div></div>' +
+                    '<div class="form-group"><label class="form-label">Nombre del Cliente</label>' +
+                    '<input type="text" id="sellCustomer" class="form-control" placeholder="Cliente mostrador"></div>' +
+                    '<div class="form-group"><label class="form-label">Método de Pago</label>' +
+                    '<select id="sellPayment" class="form-control">' +
+                    '<option value="cash">💵 Efectivo</option>' +
+                    '<option value="card">💳 Tarjeta</option>' +
+                    '<option value="transfer">🏦 Transferencia</option></select></div>' +
+                    '<div style="background:#1e293b;padding:1rem;border-radius:0.5rem;margin:1rem 0;">' +
+                    '<div style="display:flex;justify-content:space-between;font-size:1.25rem;">' +
+                    '<strong>Total:</strong><strong id="saleTotal" style="color:#10b981;">$0.00</strong></div></div>' +
+                    '<div class="modal-footer">' +
+                    '<button type="button" class="btn" onclick="app.closeModal()">Cancelar</button>' +
+                    '<button type="submit" class="btn btn-success">💰 Completar Venta</button></div></form>';
                 app.showModal('Registrar Venta', html);
+            })
+            .catch(function(e) {
+                app.showAlert('Error cargando productos', 'error');
             });
+    },
+
+    updateSaleTotal: function() {
+        var prodSelect = document.getElementById('sellProd');
+        var qtyInput = document.getElementById('sellQty');
+        var priceInput = document.getElementById('sellPrice');
+        var totalEl = document.getElementById('saleTotal');
+        
+        if (!prodSelect || !qtyInput || !priceInput || !totalEl) return;
+        
+        var selected = prodSelect.selectedOptions[0];
+        var price = parseFloat(selected ? selected.dataset.price : 0);
+        var qty = parseInt(qtyInput.value) || 0;
+        var stock = parseInt(selected ? selected.dataset.stock : 0);
+        
+        priceInput.value = price.toFixed(2);
+        
+        if (qty > stock) {
+            qtyInput.value = stock;
+            qty = stock;
+            app.showAlert('Stock máximo disponible: ' + stock, 'warning');
+        }
+        
+        var total = price * qty;
+        totalEl.textContent = '$' + total.toFixed(2);
+    },
+
+    escapeHtml: function(text) {
+        if (!text) return '';
+        var div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 };
 
-window.createProduct = async function() {
-    const payload = {
-        name: document.getElementById('addName').value,
-        price: parseFloat(document.getElementById('addPrice').value),
-        stock: parseInt(document.getElementById('addStock').value) || 0
+window.createProduct = function() {
+    var name = document.getElementById('addName').value;
+    if (!name) {
+        app.showAlert('El nombre es requerido', 'error');
+        return;
+    }
+    
+    var payload = {
+        name: name,
+        description: document.getElementById('addDesc').value,
+        category_id: document.getElementById('addCategory').value || null,
+        price: parseFloat(document.getElementById('addPrice').value) || 0,
+        cost_price: parseFloat(document.getElementById('addCost').value) || 0,
+        stock: parseInt(document.getElementById('addStock').value) || 0,
+        min_stock: parseInt(document.getElementById('addMinStock').value) || 5,
+        max_stock: parseInt(document.getElementById('addMaxStock').value) || 100,
+        unit: document.getElementById('addUnit').value || 'unidad',
+        barcode: document.getElementById('addBarcode').value,
+        location: document.getElementById('addLocation').value
     };
-    try {
-        const res = await fetch('api/inventory.php?action=add_product', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-        const data = await res.json();
+    
+    fetch('api/inventory.php?action=add_product', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
         if (data.success) {
-            app.showAlert('Producto creado');
+            app.showAlert('Producto creado: ' + data.message);
             app.closeModal();
             if (typeof Inventory !== 'undefined') Inventory.init();
-        } else throw new Error(data.error);
-    } catch (e) {
+        } else {
+            throw new Error(data.error || 'Error desconocido');
+        }
+    })
+    .catch(function(e) {
         app.showAlert(e.message, 'error');
-    }
+    });
 };
 
-window.executeSale = async function() {
-    const prodId = parseInt(document.getElementById('sellProd').value);
-    const qty = parseInt(document.getElementById('sellQty').value);
-    const sel = document.getElementById('sellProd');
-    const price = parseFloat(sel.selectedOptions[0].dataset.price);
-
-    try {
-        const res = await fetch('api/inventory.php?action=sell', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ items: [{ product_id: prodId, quantity: qty, price: price }] })
-        });
-        const data = await res.json();
+window.executeSale = function() {
+    var prodId = parseInt(document.getElementById('sellProd').value);
+    var qty = parseInt(document.getElementById('sellQty').value);
+    var price = parseFloat(document.getElementById('sellPrice').value);
+    var customer = document.getElementById('sellCustomer').value || 'Cliente Mostrador';
+    var payment = document.getElementById('sellPayment').value;
+    
+    if (!prodId || !qty) {
+        app.showAlert('Seleccione un producto y cantidad', 'error');
+        return;
+    }
+    
+    fetch('api/inventory.php?action=sell', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+            items: [{ product_id: prodId, quantity: qty, price: price }],
+            customer_name: customer,
+            payment_method: payment
+        })
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
         if (data.success) {
-            app.showAlert(`Venta registrada - ${data.invoice}`);
+            app.showAlert('Venta registrada - Factura: ' + data.invoice);
             app.closeModal();
             if (typeof Inventory !== 'undefined') Inventory.init();
-        } else throw new Error(data.error);
-    } catch (e) {
+        } else {
+            throw new Error(data.error || 'Error desconocido');
+        }
+    })
+    .catch(function(e) {
         app.showAlert(e.message, 'error');
-    }
+    });
 };
 
 window.addEventListener('DOMContentLoaded', () => app.init());

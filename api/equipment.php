@@ -59,6 +59,8 @@ switch($action) {
         $input = getJSONInput();
         $equipmentId = $input['equipment_id'] ?? 0;
         $customerName = $input['customer_name'] ?? '';
+        $customerPhone = $input['customer_phone'] ?? '';
+        $customerDoc = $input['customer_document'] ?? '';
 
         if ($equipmentId <= 0 || empty($customerName)) {
             sendJSON(['error' => 'Datos inválidos'], 400);
@@ -76,10 +78,10 @@ switch($action) {
             }
 
             $stmtLoan = $pdo->prepare('
-                INSERT INTO equipment_loans (equipment_id, customer_name, status) 
-                VALUES (?, ?, \'active\')
+                INSERT INTO equipment_loans (equipment_id, customer_name, customer_phone, customer_document, status) 
+                VALUES (?, ?, ?, ?, \'active\')
             ');
-            $stmtLoan->execute([$equipmentId, $customerName]);
+            $stmtLoan->execute([$equipmentId, $customerName, $customerPhone, $customerDoc]);
 
             $stmtEq = $pdo->prepare('UPDATE equipment SET status = \'in_use\' WHERE id = ?');
             $stmtEq->execute([$equipmentId]);

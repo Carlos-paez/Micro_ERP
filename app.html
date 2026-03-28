@@ -71,8 +71,26 @@
             <div class="page-header">
                 <h1 class="page-title">Gestión de Inventario</h1>
                 <div class="header-actions">
-                    <button class="btn btn-warning" onclick="app.showSellModal()">💰 Venta</button>
-                    <button class="btn btn-primary" onclick="app.showAddProductModal()">+ Producto</button>
+                    <button class="btn btn-success" onclick="app.showSellModal()">💰 Venta Rápida</button>
+                    <button class="btn btn-primary" onclick="app.showAddProductModal()">+ Nuevo Producto</button>
+                </div>
+            </div>
+            <div class="stats-grid" id="inventoryStats">
+                <div class="stat-card">
+                    <div class="stat-title">Total Productos</div>
+                    <div class="stat-value" id="statTotalProducts">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-title">Valor Inventario</div>
+                    <div class="stat-value text-success" id="statInventoryValue">$0.00</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-title">Stock Bajo</div>
+                    <div class="stat-value text-warning" id="statLowStock">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-title">Agotados</div>
+                    <div class="stat-value text-danger" id="statOutOfStock">0</div>
                 </div>
             </div>
             <div class="filters-bar">
@@ -83,11 +101,20 @@
                     <option value="">Todos</option>
                     <option value="low">Stock bajo</option>
                     <option value="out">Agotado</option>
+                    <option value="normal">Stock normal</option>
                 </select>
-                <input type="text" id="invSearch" class="form-control" placeholder="Buscar..." oninput="Inventory.search()">
+                <select id="invSortFilter" class="form-control" onchange="Inventory.filter()">
+                    <option value="name">Ordenar por nombre</option>
+                    <option value="stock_asc">Stock (menor a mayor)</option>
+                    <option value="stock_desc">Stock (mayor a menor)</option>
+                    <option value="price_asc">Precio (menor a mayor)</option>
+                    <option value="price_desc">Precio (mayor a menor)</option>
+                    <option value="value_desc">Valor (mayor a menor)</option>
+                </select>
+                <input type="text" id="invSearch" class="form-control" placeholder="Buscar por nombre, SKU o código de barras..." oninput="Inventory.search()" style="max-width:300px;">
             </div>
             <div class="table-container">
-                <table class="table"><thead><tr><th>SKU</th><th>Nombre</th><th>Precio</th><th>Stock</th><th>Acciones</th></tr></thead><tbody id="inventoryTable"></tbody></table>
+                <table class="table"><thead><tr><th>SKU</th><th>Producto</th><th>Categoría</th><th>Precio Venta</th><th>Costo</th><th>Stock</th><th>Valor</th><th>Acciones</th></tr></thead><tbody id="inventoryTable"></tbody></table>
             </div>
         </div>
     </template>
@@ -95,48 +122,60 @@
     <template id="tpl-providers">
         <div class="page" id="view-providers">
             <div class="page-header">
-                <h1 class="page-title">Proveedores</h1>
+                <h1 class="page-title">Gestión de Proveedores</h1>
                 <div class="header-actions">
-                    <button class="btn btn-primary" onclick="Providers.showOrderModal()">+ Nueva Orden</button>
+                    <button class="btn btn-primary" onclick="Providers.showSupplierModal()">+ Agregar Proveedor</button>
                 </div>
             </div>
             
             <div class="tabs-container">
                 <div class="tabs">
-                    <button class="tab active" data-tab="orders" onclick="Providers.switchTab('orders')">Pedidos</button>
-                    <button class="tab" data-tab="directory" onclick="Providers.switchTab('directory')">Directorio</button>
-                    <button class="tab" data-tab="lowstock" onclick="Providers.switchTab('lowstock')">Stock Bajo</button>
+                    <button class="tab active" data-tab="orders" onclick="Providers.switchTab('orders')">📦 Pedidos</button>
+                    <button class="tab" data-tab="directory" onclick="Providers.switchTab('directory')">👥 Directorio</button>
+                    <button class="tab" data-tab="lowstock" onclick="Providers.switchTab('lowstock')">⚠️ Stock Bajo</button>
                 </div>
                 
                 <div class="tab-content active" id="tab-orders">
+                    <div class="stats-grid" id="ordersStats" style="margin-bottom:1.5rem;">
+                        <div class="stat-card">
+                            <div class="stat-title">Pedidos Activos</div>
+                            <div class="stat-value text-warning" id="statActiveOrders">0</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-title">Recibidos Este Mes</div>
+                            <div class="stat-value text-success" id="statReceivedOrders">0</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-title">Total Pendiente</div>
+                            <div class="stat-value" id="statPendingAmount">$0.00</div>
+                        </div>
+                    </div>
                     <div class="filters-bar">
                         <select id="orderStatusFilter" class="form-control" onchange="Providers.loadOrders()">
-                            <option value="">Todos</option>
+                            <option value="">Todos los estados</option>
                             <option value="draft">Borrador</option>
                             <option value="pending">Pendiente</option>
                             <option value="confirmed">Confirmado</option>
                             <option value="in_transit">En Camino</option>
+                            <option value="received">Recibido</option>
                             <option value="completed">Completado</option>
                             <option value="cancelled">Cancelado</option>
                         </select>
                     </div>
                     <div class="table-container">
-                        <table class="table"><thead><tr><th>#Orden</th><th>Proveedor</th><th>Fecha</th><th>Total</th><th>Estado</th><th>Acciones</th></tr></thead><tbody id="ordersTable"></tbody></table>
+                        <table class="table"><thead><tr><th>#Orden</th><th>Proveedor</th><th>Estado</th><th>Pago</th><th>Total</th><th>Fecha</th><th>Acciones</th></tr></thead><tbody id="ordersTable"></tbody></table>
                     </div>
                 </div>
                 
                 <div class="tab-content" id="tab-directory">
-                    <div class="page-header" style="margin-bottom: 1rem;">
-                        <div></div>
-                        <button class="btn btn-primary" onclick="Providers.showSupplierModal()">+ Agregar Proveedor</button>
-                    </div>
                     <div class="suppliers-grid" id="suppliersGrid"></div>
                 </div>
                 
                 <div class="tab-content" id="tab-lowstock">
                     <div id="lowStockSection">
+                        <p class="text-muted" style="margin-bottom:1rem;">Productos que requieren reposición de inventario.</p>
                         <div class="table-container">
-                            <table class="table"><thead><tr><th>SKU</th><th>Producto</th><th>Stock</th><th>Mín.</th></tr></thead><tbody id="lowStockTable2"></tbody></table>
+                            <table class="table"><thead><tr><th>SKU</th><th>Producto</th><th>Stock Actual</th><th>Stock Mínimo</th><th>Acción</th></tr></thead><tbody id="lowStockTable2"></tbody></table>
                         </div>
                     </div>
                 </div>
@@ -150,22 +189,66 @@
                 <h1 class="page-title">Cibercontrol</h1>
                 <div class="header-actions">
                     <button class="btn btn-primary" onclick="Cyber.showSessionModal()">🎮 Nueva Sesión</button>
+                    <button class="btn btn-secondary" onclick="Cyber.showStationModal()">⚙️ Configurar Estaciones</button>
                 </div>
             </div>
+            
+            <div class="stats-grid" id="cyberStatsBar">
+                <div class="stat-card">
+                    <div class="stat-title">Estaciones Disponibles</div>
+                    <div class="stat-value text-success" id="statAvailableStations">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-title">Sesiones Activas</div>
+                    <div class="stat-value text-warning" id="statActiveSessions">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-title">Ingresos Hoy</div>
+                    <div class="stat-value" id="statCyberToday">$0.00</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-title">Servicios Hoy</div>
+                    <div class="stat-value text-primary" id="statServicesToday">$0.00</div>
+                </div>
+            </div>
+            
             <div class="tabs-container">
                 <div class="tabs">
-                    <button class="tab active" data-tab="stations" onclick="Cyber.switchTab('stations')">Estaciones</button>
-                    <button class="tab" data-tab="sessions" onclick="Cyber.switchTab('sessions')">Sesiones Activas</button>
-                    <button class="tab" data-tab="services" onclick="Cyber.switchTab('services')">Servicios</button>
+                    <button class="tab active" data-tab="stations" onclick="Cyber.switchTab('stations')">🖥️ Estaciones</button>
+                    <button class="tab" data-tab="sessions" onclick="Cyber.switchTab('sessions')">⏱️ Sesiones Activas</button>
+                    <button class="tab" data-tab="services" onclick="Cyber.switchTab('services')">🖨️ Servicios</button>
+                    <button class="tab" data-tab="history" onclick="Cyber.switchTab('history')">📋 Historial</button>
                 </div>
                 <div class="tab-content active" id="tab-stations">
                     <div class="stations-grid" id="stationsGrid"></div>
                 </div>
                 <div class="tab-content" id="tab-sessions">
-                    <div class="table-container"><table class="table"><thead><tr><th>PC</th><th>Cliente</th><th>Tiempo</th><th>Acciones</th></tr></thead><tbody id="activeSessionsTable2"></tbody></table></div>
+                    <div class="table-container">
+                        <table class="table"><thead><tr><th>PC</th><th>Cliente</th><th>Inicio</th><th>Tiempo</th><th>Costo</th><th>Acciones</th></tr></thead><tbody id="activeSessionsTable2"></tbody></table>
+                    </div>
                 </div>
                 <div class="tab-content" id="tab-services">
+                    <div class="filters-bar">
+                        <select id="serviceCategoryFilter" class="form-control" onchange="Cyber.filterServices()">
+                            <option value="">Todas las categorías</option>
+                            <option value="impresion">Impresión</option>
+                            <option value="fotocopia">Fotocopia</option>
+                            <option value="escaneo">Escaneo</option>
+                            <option value="laminado">Laminado</option>
+                            <option value="multimedia">Multimedia</option>
+                        </select>
+                    </div>
                     <div class="services-grid" id="servicesGrid"></div>
+                </div>
+                <div class="tab-content" id="tab-history">
+                    <div class="filters-bar">
+                        <input type="date" id="histDateFrom" class="form-control" onchange="Cyber.loadHistory()">
+                        <input type="date" id="histDateTo" class="form-control" onchange="Cyber.loadHistory()">
+                        <button class="btn btn-primary" onclick="Cyber.loadHistory()">Buscar</button>
+                    </div>
+                    <div class="table-container">
+                        <table class="table"><thead><tr><th>Fecha</th><th>Hora Inicio</th><th>Hora Fin</th><th>Duración</th><th>Costo</th><th>Estación</th><th>Cliente</th></tr></thead><tbody id="historyTable"></tbody></table>
+                    </div>
                 </div>
             </div>
         </div>
@@ -174,29 +257,159 @@
     <template id="tpl-reports">
         <div class="page" id="view-reports">
             <div class="page-header">
-                <h1 class="page-title">Reportes</h1>
+                <h1 class="page-title">Reportes y Estadísticas</h1>
+                <div class="header-actions">
+                    <button class="btn btn-secondary" onclick="Reports.exportCurrentReport()">📥 Exportar CSV</button>
+                </div>
             </div>
             <div class="filters-bar">
-                <input type="date" id="repDateFrom" class="form-control">
-                <input type="date" id="repDateTo" class="form-control">
-                <button class="btn btn-primary" onclick="Reports.loadReport()">Generar</button>
+                <div class="form-group" style="margin:0;">
+                    <label class="form-label" style="font-size:0.75rem;">Desde</label>
+                    <input type="date" id="repDateFrom" class="form-control">
+                </div>
+                <div class="form-group" style="margin:0;">
+                    <label class="form-label" style="font-size:0.75rem;">Hasta</label>
+                    <input type="date" id="repDateTo" class="form-control">
+                </div>
+                <div class="form-group" style="margin:0;">
+                    <label class="form-label" style="font-size:0.75rem;">Mes Rápido</label>
+                    <select id="repQuickRange" class="form-control" onchange="Reports.setQuickRange()">
+                        <option value="">Seleccionar...</option>
+                        <option value="today">Hoy</option>
+                        <option value="week">Esta semana</option>
+                        <option value="month" selected>Este mes</option>
+                        <option value="lastmonth">Mes pasado</option>
+                        <option value="year">Este año</option>
+                    </select>
+                </div>
+                <button class="btn btn-primary" onclick="Reports.loadReport()" style="align-self:flex-end;">📊 Generar Reporte</button>
             </div>
             <div class="tabs-container">
                 <div class="tabs">
-                    <button class="tab active" data-tab="sales" onclick="Reports.switchTab('sales')">Ventas</button>
-                    <button class="tab" data-tab="cyber" onclick="Reports.switchTab('cyber')">Cibercafé</button>
-                    <button class="tab" data-tab="inventory" onclick="Reports.switchTab('inventory')">Inventario</button>
+                    <button class="tab active" data-tab="sales" onclick="Reports.switchTab('sales')">💰 Ventas</button>
+                    <button class="tab" data-tab="cyber" onclick="Reports.switchTab('cyber')">🖥️ Cibercafé</button>
+                    <button class="tab" data-tab="services" onclick="Reports.switchTab('services')">🖨️ Servicios</button>
+                    <button class="tab" data-tab="inventory" onclick="Reports.switchTab('inventory')">📦 Inventario</button>
+                    <button class="tab" data-tab="providers" onclick="Reports.switchTab('providers')">🚚 Proveedores</button>
+                    <button class="tab" data-tab="summary" onclick="Reports.switchTab('summary')">📈 Resumen</button>
                 </div>
+                
                 <div class="tab-content active" id="tab-sales">
                     <div class="stats-grid" id="salesStats"></div>
-                    <div class="table-container"><table class="table"><thead><tr><th>Fecha</th><th>Transacciones</th><th>Total</th></tr></thead><tbody id="salesReportTable"></tbody></table></div>
+                    <div class="dashboard-grid">
+                        <div class="dashboard-card" style="grid-column:span 2;">
+                            <div class="card-header"><h3>Ventas por Día</h3></div>
+                            <div class="table-container">
+                                <table class="table"><thead><tr><th>Fecha</th><th>Transacciones</th><th>Efectivo</th><th>Tarjeta</th><th>Transferencia</th><th>Total</th></tr></thead><tbody id="salesReportTable"></tbody></table>
+                            </div>
+                        </div>
+                        <div class="dashboard-card">
+                            <div class="card-header"><h3>Productos Más Vendidos</h3></div>
+                            <div class="table-container">
+                                <table class="table"><thead><tr><th>Producto</th><th>Veces</th><th>Cantidad</th><th>Ingresos</th></tr></thead><tbody id="topProductsTable"></tbody></table>
+                            </div>
+                        </div>
+                    </div>
                 </div>
+                
                 <div class="tab-content" id="tab-cyber">
                     <div class="stats-grid" id="cyberStats"></div>
-                    <div class="table-container"><table class="table"><thead><tr><th>Fecha</th><th>Sesiones</th><th>Total</th></tr></thead><tbody id="cyberReportTable"></tbody></table></div>
+                    <div class="dashboard-grid">
+                        <div class="dashboard-card">
+                            <div class="card-header"><h3>Uso por Estación</h3></div>
+                            <div class="table-container">
+                                <table class="table"><thead><tr><th>Estación</th><th>Sesiones</th><th>Minutos</th><th>Ingresos</th></tr></thead><tbody id="cyberByStationTable"></tbody></table>
+                            </div>
+                        </div>
+                        <div class="dashboard-card" style="grid-column:span 2;">
+                            <div class="card-header"><h3>Detalle Diario</h3></div>
+                            <div class="table-container">
+                                <table class="table"><thead><tr><th>Fecha</th><th>Sesiones</th><th>Minutos Totales</th><th>Ticket Promedio</th><th>Ingresos</th></tr></thead><tbody id="cyberReportTable"></tbody></table>
+                            </div>
+                        </div>
+                    </div>
                 </div>
+                
+                <div class="tab-content" id="tab-services">
+                    <div class="stats-grid" id="servicesStats"></div>
+                    <div class="dashboard-grid">
+                        <div class="dashboard-card">
+                            <div class="card-header"><h3>Por Categoría</h3></div>
+                            <div class="table-container">
+                                <table class="table"><thead><tr><th>Categoría</th><th>Transacciones</th><th>Ingresos</th></tr></thead><tbody id="servicesByCategoryTable"></tbody></table>
+                            </div>
+                        </div>
+                        <div class="dashboard-card">
+                            <div class="card-header"><h3>Por Servicio</h3></div>
+                            <div class="table-container">
+                                <table class="table"><thead><tr><th>Servicio</th><th>Veces Usado</th><th>Ingresos</th></tr></thead><tbody id="servicesByServiceTable"></tbody></table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
                 <div class="tab-content" id="tab-inventory">
                     <div class="stats-grid" id="invStats"></div>
+                    <div class="dashboard-grid">
+                        <div class="dashboard-card">
+                            <div class="card-header"><h3>Por Categoría</h3></div>
+                            <div class="table-container">
+                                <table class="table"><thead><tr><th>Categoría</th><th>Productos</th><th>Unidades</th><th>Valor</th><th>Utilidad</th></tr></thead><tbody id="invReportTable"></tbody></table>
+                            </div>
+                        </div>
+                        <div class="dashboard-card">
+                            <div class="card-header"><h3>Estado del Stock</h3></div>
+                            <div class="table-container">
+                                <table class="table"><thead><tr><th>Estado</th><th>Cantidad</th></tr></thead><tbody id="invByStatusTable"></tbody></table>
+                            </div>
+                        </div>
+                        <div class="dashboard-card" style="grid-column:span 2;">
+                            <div class="card-header"><h3>Productos con Stock Bajo</h3></div>
+                            <div class="table-container">
+                                <table class="table"><thead><tr><th>SKU</th><th>Producto</th><th>Stock</th><th>Mínimo</th><th>Categoría</th></tr></thead><tbody id="invLowStockTable"></tbody></table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="tab-content" id="tab-providers">
+                    <div class="stats-grid" id="providerStats"></div>
+                    <div class="dashboard-grid">
+                        <div class="dashboard-card">
+                            <div class="card-header"><h3>Rendimiento de Proveedores</h3></div>
+                            <div class="table-container">
+                                <table class="table"><thead><tr><th>Proveedor</th><th>Pedidos</th><th>Completados</th><th>Total Compras</th></tr></thead><tbody id="providersReportTable"></tbody></table>
+                            </div>
+                        </div>
+                        <div class="dashboard-card">
+                            <div class="card-header"><h3>Pedidos Recientes</h3></div>
+                            <div class="table-container">
+                                <table class="table"><thead><tr><th>Fecha</th><th>Proveedor</th><th>Total</th></tr></thead><tbody id="recentOrdersTable"></tbody></table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="tab-content" id="tab-summary">
+                    <div class="stats-grid" id="summaryStats"></div>
+                    <div class="dashboard-grid">
+                        <div class="dashboard-card">
+                            <div class="card-header"><h3>Ingresos</h3></div>
+                            <div class="table-container">
+                                <table class="table"><thead><tr><th>Fuente</th><th>Monto</th><th>%</th></tr></thead><tbody id="incomeBreakdownTable"></tbody></table>
+                            </div>
+                        </div>
+                        <div class="dashboard-card">
+                            <div class="card-header"><h3>Gastos</h3></div>
+                            <div class="table-container">
+                                <table class="table"><thead><tr><th>Concepto</th><th>Monto</th></tr></thead><tbody id="expensesTable"></tbody></table>
+                            </div>
+                        </div>
+                        <div class="dashboard-card" style="grid-column:span 2;">
+                            <div class="card-header"><h3>Estado de Resultados</h3></div>
+                            <div id="profitLossDisplay" style="padding:1.5rem;"></div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -205,19 +418,55 @@
     <template id="tpl-equipment">
         <div class="page" id="view-equipment">
             <div class="page-header">
-                <h1 class="page-title">Equipamiento</h1>
+                <h1 class="page-title">Equipamiento y Préstamos</h1>
                 <div class="header-actions">
-                    <button class="btn btn-primary" onclick="Equipment.showAddModal()">+ Equipo</button>
-                    <button class="btn btn-warning" onclick="Equipment.showLoanModal()">📋 Préstamo</button>
+                    <button class="btn btn-primary" onclick="Equipment.showAddModal()">+ Agregar Equipo</button>
                 </div>
             </div>
-            <div class="table-container mb-3">
-                <div class="card-header"><h3>Préstamos Activos</h3></div>
-                <table class="table"><thead><tr><th>Equipo</th><th>Cliente</th><th>Inicio</th><th>Acciones</th></tr></thead><tbody id="activeLoansTable"></tbody></table>
+            
+            <div class="stats-grid" id="equipmentStats">
+                <div class="stat-card">
+                    <div class="stat-title">Equipos Totales</div>
+                    <div class="stat-value" id="statTotalEquipment">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-title">Disponibles</div>
+                    <div class="stat-value text-success" id="statAvailableEquipment">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-title">En Préstamo</div>
+                    <div class="stat-value text-warning" id="statLoanedEquipment">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-title">En Mantenimiento</div>
+                    <div class="stat-value text-danger" id="statMaintenanceEquipment">0</div>
+                </div>
             </div>
-            <div class="table-container">
-                <div class="card-header"><h3>Inventario</h3></div>
-                <table class="table"><thead><tr><th>#</th><th>Nombre</th><th>Estado</th><th>Acciones</th></tr></thead><tbody id="equipmentTable"></tbody></table>
+            
+            <div class="tabs-container">
+                <div class="tabs">
+                    <button class="tab active" data-tab="loans" onclick="Equipment.switchTab('loans')">📋 Préstamos Activos</button>
+                    <button class="tab" data-tab="inventory" onclick="Equipment.switchTab('inventory')">📦 Inventario</button>
+                    <button class="tab" data-tab="history" onclick="Equipment.switchTab('history')">📋 Historial</button>
+                </div>
+                
+                <div class="tab-content active" id="tab-loans">
+                    <div class="table-container">
+                        <table class="table"><thead><tr><th>Equipo</th><th>Cliente</th><th>Teléfono</th><th>Fecha Préstamo</th><th>Acciones</th></tr></thead><tbody id="activeLoansTable"></tbody></table>
+                    </div>
+                </div>
+                
+                <div class="tab-content" id="tab-inventory">
+                    <div class="table-container">
+                        <table class="table"><thead><tr><th>#</th><th>Nombre</th><th>Descripción</th><th>Categoría</th><th>Estado</th><th>Ubicación</th><th>Acciones</th></tr></thead><tbody id="equipmentTable"></tbody></table>
+                    </div>
+                </div>
+                
+                <div class="tab-content" id="tab-history">
+                    <div class="table-container">
+                        <table class="table"><thead><tr><th>Equipo</th><th>Cliente</th><th>Inicio</th><th>Fin</th><th>Duración</th></tr></thead><tbody id="loanHistoryTable"></tbody></table>
+                    </div>
+                </div>
             </div>
         </div>
     </template>

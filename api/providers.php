@@ -107,6 +107,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $items = $input['items'] ?? [];
         $notes = $input['notes'] ?? '';
         $expectedDate = $input['expected_date'] ?? null;
+        $orderDate = $input['order_date'] ?? date('Y-m-d');
 
         if (!$supplierId) {
             sendJSON(['error' => 'Supplier is required'], 400);
@@ -119,8 +120,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         try {
             $orderNumber = 'PO-' . date('Ymd') . '-' . str_pad(mt_rand(1, 9999), 4, '0', STR_PAD_LEFT);
             
-            $stmt = $pdo->prepare('INSERT INTO provider_orders (order_number, supplier_id, status, order_date, expected_date, notes, created_by) VALUES (?, ?, ?, CURDATE(), ?, ?, ?)');
-            $stmt->execute([$orderNumber, $supplierId, 'draft', $expectedDate, $notes, $userId]);
+            $stmt = $pdo->prepare('INSERT INTO provider_orders (order_number, supplier_id, status, order_date, expected_date, notes, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)');
+            $stmt->execute([$orderNumber, $supplierId, 'draft', $orderDate, $expectedDate, $notes, $userId]);
             $orderId = $pdo->lastInsertId();
 
             $stmtItem = $pdo->prepare('INSERT INTO provider_order_items (order_id, product_id, quantity_ordered, unit_price, subtotal) VALUES (?, ?, ?, ?, ?)');

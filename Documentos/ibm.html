@@ -1,0 +1,706 @@
+<!doctype html>
+<html lang="es">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>SRS - Sistema Zona Web Lara</title>
+        <style>
+            /* =========================================
+           VARIABLES DE DISEÑO Y RESET
+           ========================================= */
+            :root {
+                --color-primario: #003366;
+                --color-texto: #000000;
+                --color-fondo-tabla: #f2f2f2;
+                --fuente-base: "Times New Roman", Times, serif;
+                --tamano-fuente: 12pt;
+            }
+
+            * {
+                box-sizing: border-box;
+                margin: 0;
+                padding: 0;
+            }
+
+            body {
+                font-family: var(--fuente-base);
+                font-size: var(--tamano-fuente);
+                line-height: 1.5;
+                color: var(--color-texto);
+                background-color: #e0e0e0; /* Fondo gris solo para la pantalla */
+                margin: 0;
+                padding: 2cm 3cm;
+            }
+
+            /* =========================================
+           CONTENEDOR PRINCIPAL (SIMULA EL PAPEL)
+           ========================================= */
+            #document-content {
+                background-color: #ffffff;
+                max-width: 21cm;
+                margin: 0 auto;
+                padding: 2.5cm 3cm;
+                box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+            }
+
+            /* =========================================
+           TIPOGRAFÍA Y TÍTULOS
+           ========================================= */
+            h1,
+            h2,
+            h3,
+            h4 {
+                color: var(--color-primario);
+            }
+
+            h1 {
+                font-size: 20pt;
+                text-align: center;
+                border: none;
+                margin-bottom: 10px;
+            }
+            h2 {
+                font-size: 14pt;
+                border-bottom: 2px solid var(--color-primario);
+                padding-bottom: 5px;
+                margin-top: 30px;
+                margin-bottom: 15px;
+                page-break-after: avoid;
+            }
+            h3 {
+                font-size: 12pt;
+                margin-top: 20px;
+                margin-bottom: 10px;
+                font-style: italic;
+                page-break-after: avoid;
+            }
+
+            p {
+                text-align: justify;
+                margin-bottom: 12px;
+            }
+            ul,
+            ol {
+                margin-left: 30px;
+                margin-bottom: 15px;
+            }
+            li {
+                margin-bottom: 5px;
+            }
+
+            /* =========================================
+           TABLAS IEEE
+           ========================================= */
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                margin: 20px 0;
+                font-size: 10pt;
+                page-break-inside: avoid;
+            }
+            th,
+            td {
+                border: 1px solid #000;
+                padding: 8px;
+                text-align: left;
+                vertical-align: top;
+            }
+            th {
+                background-color: var(--color-fondo-tabla);
+                font-weight: bold;
+                text-align: center;
+            }
+
+            /* =========================================
+           PORTADA Y FIRMAS
+           ========================================= */
+            .cover-page {
+                text-align: center;
+                padding-top: 150px;
+                page-break-after: always;
+            }
+            .cover-page h1 {
+                font-size: 26pt;
+                margin-bottom: 30px;
+                color: var(--color-texto);
+            }
+            .signatures {
+                display: flex;
+                justify-content: space-between;
+                margin-top: 150px;
+            }
+            .sig-box {
+                width: 40%;
+                text-align: center;
+            }
+            .sig-line {
+                border-top: 1px solid #000;
+                margin-top: 80px;
+                margin-bottom: 5px;
+            }
+
+            /* =========================================
+           ÍNDICE (TARGET PARA EL SCRIPT)
+           ========================================= */
+            #toc-container {
+                page-break-after: always;
+            }
+            .toc-item {
+                display: flex;
+                justify-content: space-between;
+                margin-bottom: 5px;
+            }
+            .toc-item.h3-item {
+                padding-left: 20px;
+            }
+            .toc-dots {
+                border-bottom: 1px dotted #999;
+                flex-grow: 1;
+                margin: 0 5px;
+            }
+
+            /* =========================================
+           INTERFAZ FLUCTUANTE (SOLO PANTALLA)
+           ========================================= */
+            #ui-controls {
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                z-index: 1000;
+            }
+            #btn-print {
+                background-color: var(--color-primario);
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                font-size: 14pt;
+                border-radius: 5px;
+                cursor: pointer;
+                box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.3);
+            }
+            #btn-print:hover {
+                background-color: #004080;
+            }
+
+            /* =========================================
+           MODO DE IMPRESIÓN (PDF)
+           ========================================= */
+            @media print {
+                body {
+                    background-color: #fff;
+                    padding: 0;
+                    margin: 0;
+                }
+                #document-content {
+                    box-shadow: none;
+                    padding: 0;
+                    max-width: 100%;
+                }
+                #ui-controls {
+                    display: none;
+                } /* Oculta botón */
+                .cover-page {
+                    padding-top: 30%;
+                }
+                .no-print {
+                    display: none;
+                }
+
+                /* Fuerza saltos de página limpios */
+                h2,
+                h3,
+                table {
+                    page-break-inside: avoid;
+                }
+                .cover-page,
+                #toc-container,
+                .signatures-page {
+                    page-break-after: always;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <!-- Botón Flotante -->
+        <div id="ui-controls" class="no-print">
+            <button id="btn-print" onclick="window.print()">
+                📄 Exportar a PDF
+            </button>
+        </div>
+
+        <!-- Inicio del Documento Oficial -->
+        <div id="document-content">
+            <!-- PORTADA -->
+            <div class="cover-page">
+                <h1>SISTEMA DE GESTIÓN INTEGRAL<br />ZONA WEB LARA</h1>
+                <p style="font-size: 16pt">
+                    <strong
+                        >Especificación de Requisitos de Software (SRS)</strong
+                    >
+                </p>
+                <p style="font-size: 12pt; margin-top: 20px">
+                    Estándar IEEE Std 830-1998
+                </p>
+                <br /><br /><br />
+                <p><strong>Versión:</strong> 1.00</p>
+                <p><strong>Fecha:</strong> Mayo 2024</p>
+                <p><strong>Estado:</strong> Aprobado para Desarrollo</p>
+            </div>
+
+            <!-- PÁGINA DE FIRMAS -->
+            <div class="signatures-page">
+                <p style="text-align: right; font-size: 10pt">Revisión 1.00</p>
+                <h2 style="margin-top: 40px">Validación del Documento</h2>
+                <p>
+                    Mediante la firma de este documento, las partes involucradas
+                    aprueban los requisitos aquí descritos como la base para el
+                    desarrollo del software.
+                </p>
+
+                <div class="signatures">
+                    <div class="sig-box">
+                        <div class="sig-line"></div>
+                        <p>
+                            <strong>Equipo Desarrollador</strong><br />[Carlos
+                            Páez]<br />C.I: [31470100]
+                        </p>
+                    </div>
+                    <div class="sig-box">
+                        <div class="sig-line"></div>
+                        <p>
+                            <strong>Comunidad / Cliente</strong><br />[Mayela
+                            Cadevilla]<br />C.I: [00000000]
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ÍNDICE AUTOMÁTICO -->
+            <div id="toc-container">
+                <h2>Índice</h2>
+                <div id="toc-list">
+                    <!-- El JavaScript inyectará el índice aquí automáticamente -->
+                </div>
+            </div>
+
+            <!-- CONTENIDO PRINCIPAL -->
+            <main>
+                <section id="intro">
+                    <h2>1. Introducción</h2>
+                    <h3>1.1 Propósito</h3>
+                    <p>
+                        El propósito de este documento es proporcionar una
+                        descripción completa de los requisitos para el
+                        desarrollo del "Sistema de Gestión Integral Zona Web
+                        Lara". Este sistema tiene como objetivo automatizar y
+                        centralizar el control de las operaciones diarias,
+                        supliendo las carencias actuales del negocio mediante
+                        tecnología de la información.
+                    </p>
+
+                    <h3>1.2 Alcance</h3>
+                    <p>
+                        El software a desarrollarse abarcará la recepción y
+                        atención de clientes, el bloqueo y desbloqueo de equipos
+                        por tiempo de uso, la generación de alertas, el manejo
+                        de punto de venta (POS), el seguimiento de inventario
+                        físico y digital, la impresión de formatos y la gestión
+                        de flujos de trámites legales. No incluye módulos de
+                        contabilidad financiera integral ni nómina, limitándose
+                        al control operativo.
+                    </p>
+
+                    <h3>1.3 Personal Involucrado</h3>
+                    <table>
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Rol</th>
+                            <th>Responsabilidades</th>
+                            <th>Contacto</th>
+                        </tr>
+                        <tr>
+                            <td>[Nombre del Tutor]</td>
+                            <td>Tutor Académico</td>
+                            <td>Asesoría metodológica y validación técnica.</td>
+                            <td>[Correo / Teléfono]</td>
+                        </tr>
+                        <tr>
+                            <td>[Nombre Estudiante]</td>
+                            <td>Analista / Programador</td>
+                            <td>Levantamiento, modelado y codificación.</td>
+                            <td>[Correo / Teléfono]</td>
+                        </tr>
+                        <tr>
+                            <td>[Nombre Dueña]</td>
+                            <td>Patrocinadora</td>
+                            <td>
+                                Aprobación de requisitos y validación final.
+                            </td>
+                            <td>[Correo / Teléfono]</td>
+                        </tr>
+                    </table>
+                </section>
+
+                <section id="descripcion">
+                    <h2>2. Descripción General</h2>
+                    <h3>2.1 Perspectiva del Producto</h3>
+                    <p>
+                        El sistema es autónomo y no depende de otros sistemas
+                        externos más que del hardware periférico (impresoras y
+                        red LAN) para el bloqueo de PCs. Utilizará una base de
+                        datos local relacional para garantizar la persistencia
+                        de la información ante cortes de energía o fallos de
+                        red.
+                    </p>
+
+                    <h3>2.2 Funcionalidades del Producto</h3>
+                    <ul>
+                        <li>
+                            <strong>Módulo Cyber Control:</strong> Monitoreo de
+                            disponibilidad, asignación de equipos, cronometraje,
+                            bloqueo remoto automático, alertas GUI iterativas y
+                            extensión de tiempo.
+                        </li>
+                        <li>
+                            <strong>Módulo Punto de Venta (POS):</strong> Venta
+                            de productos varios, generación de factura y
+                            descuento automático de stock.
+                        </li>
+                        <li>
+                            <strong>Módulo Inventario y Proveedores:</strong>
+                            Gestión de cantidades (agregar/eliminar/editar),
+                            monitoreo contra cantidad mínima, alertas a dueña, y
+                            registro de proveedores frecuentes.
+                        </li>
+                        <li>
+                            <strong>Módulo Impresión:</strong> Recepción de
+                            formatos, llenado digital y enrutamiento a impresión
+                            (B/N o Color).
+                        </li>
+                        <li>
+                            <strong>Módulo Asesoría Legal:</strong> Triage de
+                            documentos (controlados vs no controlados),
+                            redirección de flujos y registro de tramites.
+                        </li>
+                    </ul>
+
+                    <h3>2.3 Características de los Usuarios</h3>
+                    <table>
+                        <tr>
+                            <th>Tipo de Usuario</th>
+                            <th>Formación</th>
+                            <th>Actividades en el Sistema</th>
+                        </tr>
+                        <tr>
+                            <td>Vendedor / Técnico</td>
+                            <td>Bachillerato / TSU / Ingenieria</td>
+                            <td>
+                                Login, Gestionar Cyber, Vender, Imprimir,
+                                Actualizar Inventario.
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>Licenciada</td>
+                            <td>Universitaria (Derecho)</td>
+                            <td>
+                                Login, Asesoría Legal, Llenar Formatos,
+                                Contactar Proveedores.
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>Dueña</td>
+                            <td>Universitaria</td>
+                            <td>
+                                Visualizar Dashboard, Monitorear bajo stock,
+                                Listar Proveedores.
+                            </td>
+                        </tr>
+                    </table>
+                </section>
+
+                <section id="requisitos-especificos">
+                    <h2>3. Requisitos Específicos</h2>
+
+                    <h3>3.1 Interfaces de Usuario</h3>
+                    <p>
+                        El sistema presentará un
+                        <strong>Dashboard principal</strong> post-Login. Para el
+                        Cyber Control, se usarán colores semánticos (Verde
+                        Disponible, Rojo Bloqueado). Las alertas por falta de
+                        atención serán ventanas modales con opción a "Repetir
+                        Alerta".
+                    </p>
+
+                    <h3>3.2 Interfaces de Hardware</h3>
+                    <ul>
+                        <li>
+                            <strong>Servidor/Host:</strong> PC con mínimo 8GB
+                            RAM y procesador i3 (soporte para BD y conexión
+                            simultánea de hasta 20 PCs).
+                        </li>
+                        <li>
+                            <strong>Red:</strong> Switch o Router con red LAN
+                            (cableada preferiblemente) para envío de paquetes de
+                            bloqueo a las PCs clientes.
+                        </li>
+                        <li>
+                            <strong>Periféricos:</strong> Impresoras
+                            multifunción conectadas por red al servidor.
+                        </li>
+                    </ul>
+
+                    <h3>3.3 Interfaces de Software</h3>
+                    <ul>
+                        <li>
+                            <strong>Sistema Operativo Base:</strong> Windows
+                            10/11.
+                        </li>
+                        <li>
+                            <strong>Motor de Base de Datos:</strong> MySQL 8.0 o
+                            PostgreSQL.
+                        </li>
+                        <li>
+                            <strong>Runtime:</strong> Entorno de ejecución según
+                            el lenguaje elegido (Ej: JRE para Java, .NET Core
+                            para C#).
+                        </li>
+                    </ul>
+                </section>
+
+                <section id="req-funcionales">
+                    <h2>4. Requerimientos Funcionales</h2>
+                    <table>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nombre</th>
+                            <th>Descripción</th>
+                            <th>Entrada</th>
+                            <th>Salida</th>
+                            <th>Prioridad</th>
+                        </tr>
+                        <tr>
+                            <td>RF-01</td>
+                            <td>Login</td>
+                            <td>
+                                Incluir verificación de credenciales. Extender
+                                notificación de credenciales incorrectas tras 3
+                                intentos.
+                            </td>
+                            <td>Usuario, Clave</td>
+                            <td>Acceso al Dashboard</td>
+                            <td>Alta</td>
+                        </tr>
+                        <tr>
+                            <td>RF-02</td>
+                            <td>Asignar Equipo</td>
+                            <td>
+                                Incluir: Registrar datos del cliente, Asignar
+                                equipo, Cambiar estado a ocupado.
+                            </td>
+                            <td>Cédula, Tiempo</td>
+                            <td>Cronómetro activo, GUI actualizada</td>
+                            <td>Alta</td>
+                        </tr>
+                        <tr>
+                            <td>RF-03</td>
+                            <td>Bloqueo y Alertas</td>
+                            <td>
+                                Incluir: Notificar culminación, Lanzar alerta
+                                GUI, Extender repetir alerta en caso de falta de
+                                atención.
+                            </td>
+                            <td>Automático</td>
+                            <td>Bloqueo de PC cliente, Alerta visual</td>
+                            <td>Alta</td>
+                        </tr>
+                        <tr>
+                            <td>RF-04</td>
+                            <td>Extender Tiempo</td>
+                            <td>
+                                Permitir añadir tiempo sobre una sesión activa o
+                                bloqueada.
+                            </td>
+                            <td>Nuevos minutos</td>
+                            <td>Cronómetro reiniciado</td>
+                            <td>Media</td>
+                        </tr>
+                        <tr>
+                            <td>RF-05</td>
+                            <td>Venta e Inventario</td>
+                            <td>
+                                Incluir: Descartar productos del stock, Editar
+                                total de productos, Generar factura de venta.
+                            </td>
+                            <td>Código, Cantidad</td>
+                            <td>Factura, Stock actualizado</td>
+                            <td>Alta</td>
+                        </tr>
+                        <tr>
+                            <td>RF-06</td>
+                            <td>Impresión</td>
+                            <td>
+                                Incluir: Recibir documentos, Llenar formato
+                                digital, Imprimir (B/N o Color).
+                            </td>
+                            <td>Archivo, Opción color</td>
+                            <td>Documento físico</td>
+                            <td>Alta</td>
+                        </tr>
+                        <tr>
+                            <td>RF-07</td>
+                            <td>Asesoría Legal</td>
+                            <td>
+                                Incluir: Determinar tipo, Comparar con
+                                permitidos, Redirigir a oficina (si aplica),
+                                Llenar formatos oficiales.
+                            </td>
+                            <td>Solicitud verbal</td>
+                            <td>Indicaciones o documento tramitado</td>
+                            <td>Alta</td>
+                        </tr>
+                        <tr>
+                            <td>RF-08</td>
+                            <td>Control Bajo Stock</td>
+                            <td>
+                                Incluir: Monitorear stock vs mínimo, Notificar
+                                bajo stock a dueña, Listar proveedores
+                                frecuentes.
+                            </td>
+                            <td>Automático</td>
+                            <td>Alerta en Dashboard, Lista Proveedores</td>
+                            <td>Alta</td>
+                        </tr>
+                    </table>
+                </section>
+
+                <section id="req-no-funcionales">
+                    <h2>5. Requerimientos No Funcionales</h2>
+                    <table>
+                        <tr>
+                            <th>ID</th>
+                            <th>Atributo de Calidad</th>
+                            <th>Descripción del Requerimiento</th>
+                            <th>Prioridad</th>
+                        </tr>
+                        <tr>
+                            <td>RNF-01</td>
+                            <td>Seguridad</td>
+                            <td>
+                                Gestión de usuarios robusta. Las credenciales
+                                deben estar encriptadas en la base de datos
+                                (Hashing).
+                            </td>
+                            <td>Alta</td>
+                        </tr>
+                        <tr>
+                            <td>RNF-02</td>
+                            <td>Fiabilidad</td>
+                            <td>
+                                El sistema debe tener un mecanismo de "Fallo
+                                Seguro": si se cae el servidor, las PCs cliente
+                                deben bloquearse automáticamente por seguridad.
+                            </td>
+                            <td>Alta</td>
+                        </tr>
+                        <tr>
+                            <td>RNF-03</td>
+                            <td>Rendimiento</td>
+                            <td>
+                                El tiempo de respuesta entre que el cronómetro
+                                llega a cero y la PC del cliente se bloquea no
+                                debe exceder los 2 segundos.
+                            </td>
+                            <td>Alta</td>
+                        </tr>
+                        <tr>
+                            <td>RNF-04</td>
+                            <td>Usabilidad</td>
+                            <td>
+                                El diseño debe evitar la redundancia. El flujo
+                                de Cyber Control no debe requerir más de 3 clics
+                                para iniciar una sesión.
+                            </td>
+                            <td>Media</td>
+                        </tr>
+                        <tr>
+                            <td>RNF-05</td>
+                            <td>Mantenibilidad</td>
+                            <td>
+                                El código debe estar segregado por módulos (MVC)
+                                para permitir modificar el módulo legal sin
+                                afectar el módulo de inventario.
+                            </td>
+                            <td>Media</td>
+                        </tr>
+                    </table>
+                </section>
+            </main>
+        </div>
+
+        <!-- =========================================
+         SCRIPT AUTÓNOMO (GENERADOR DE ÍNDICE)
+         ========================================= -->
+        <script>
+            document.addEventListener("DOMContentLoaded", function () {
+                const tocList = document.getElementById("toc-list");
+                const headers = document.querySelectorAll("main h2, main h3");
+
+                // Arreglo para guardar los elementos y calcular posición
+                let items = [];
+
+                headers.forEach((header) => {
+                    // Ignorar el título "Índice"
+                    if (header.textContent.trim() === "Índice") return;
+
+                    // Crear un ID único para el header si no lo tiene
+                    if (!header.id) {
+                        header.id = header.textContent
+                            .toLowerCase()
+                            .replace(/[^a-z0-9\s-]/g, "") // Quita caracteres raros
+                            .replace(/\s+/g, "-") // Espacios a guiones
+                            .trim();
+                    }
+
+                    items.push({
+                        id: header.id,
+                        text: header.textContent,
+                        level: header.tagName.toLowerCase(), // h2 o h3
+                    });
+                });
+
+                // Generar el HTML del índice
+                let htmlOutput = "";
+                items.forEach((item) => {
+                    const isH3 = item.level === "h3";
+                    htmlOutput += `
+                    <div class="toc-item ${isH3 ? "h3-item" : ""}">
+                        <span>${item.text}</span>
+                        <span class="toc-dots"></span>
+                        <span class="toc-page"></span>
+                    </div>
+                `;
+                });
+
+                tocList.innerHTML = htmlOutput;
+
+                // Función para calcular y rellenar los números de página AL IMPRIMIR
+                window.addEventListener("beforeprint", () => {
+                    const pageElements = document.querySelectorAll(".toc-page");
+                    items.forEach((item, index) => {
+                        const element = document.getElementById(item.id);
+                        if (element && pageElements[index]) {
+                            // Calcula en qué página cae el elemento basándose en la altura de la página A4
+                            const windowHeight = window.innerHeight;
+                            const elementTop =
+                                element.getBoundingClientRect().top;
+                            const pageNumber = Math.ceil(
+                                elementTop / windowHeight,
+                            );
+                            pageElements[index].textContent = pageNumber;
+                        }
+                    });
+                });
+            });
+        </script>
+    </body>
+</html>
